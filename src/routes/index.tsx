@@ -804,8 +804,11 @@ function FinalCTA() {
             </Badge>
             <h2 className="mx-auto mt-6 max-w-[720px] text-balance text-[36px] font-semibold leading-[1.05] tracking-[-0.025em] sm:text-[48px]">
               Be first to experience{" "}
-              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", color: "#000000" }}>
-                Hyper space
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
+                <span style={{ color: "#000000" }}>Hyper</span>{" "}
+                <span className="relative inline-block bg-gradient-to-r from-primary via-primary-soft to-primary bg-clip-text text-transparent">
+                  space
+                </span>
               </span>
               .
             </h2>
@@ -912,7 +915,7 @@ function ComparisonSection() {
         </div>
 
         {/* Footnote and Link moved outside wrapper in normal document flow */}
-        <p className="relative z-10 mt-10 text-center text-[12.5px] text-muted-foreground">
+        <p className="relative z-10 mt-10 text-center text-[14px] text-muted-foreground">
           Based on average videographer rates of $500-1,200 per property video
         </p>
 
@@ -920,10 +923,10 @@ function ComparisonSection() {
           <Link
             to="/studio"
             data-cursor="hover"
-            className="inline-flex items-center gap-1.5 text-[15px] font-medium text-primary transition-[text-shadow,opacity] duration-200 hover:opacity-80 active:[text-shadow:0_0_12px_rgba(109,94,248,0.55)] focus-visible:[text-shadow:0_0_12px_rgba(109,94,248,0.55)] focus-visible:outline-none"
+            className="inline-flex items-center gap-1.5 text-[16.5px] font-medium text-primary transition-[text-shadow,opacity] duration-200 hover:opacity-80 active:[text-shadow:0_0_12px_rgba(109,94,248,0.55)] focus-visible:[text-shadow:0_0_12px_rgba(109,94,248,0.55)] focus-visible:outline-none"
           >
             Try it on your next listing
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-[17px] w-[17px]" />
           </Link>
         </div>
       </div>

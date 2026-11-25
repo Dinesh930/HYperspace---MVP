@@ -172,6 +172,14 @@ function StudioPage() {
   const scrolled = useScrolled();
   useRevealOnScroll();
 
+  // Instant scroll to top before paint on navigation
+  useEffect(() => {
+    const prevBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    document.documentElement.style.scrollBehavior = prevBehavior;
+  }, []);
+
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedQuality, setSelectedQuality] = useState<string>("1080p");
@@ -452,7 +460,12 @@ function StudioPage() {
 
       <Nav scrolled={scrolled} />
 
-      <main className="relative z-10 mx-auto w-full max-w-[1240px] px-4 sm:px-6 pt-10 sm:pt-14 pb-24">
+      <motion.main
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="relative z-10 mx-auto w-full max-w-[1240px] px-4 sm:px-6 pt-10 sm:pt-14 pb-24"
+      >
         {/* Header */}
         <div>
           <Link
@@ -510,7 +523,7 @@ function StudioPage() {
             {(selectedCategory === "all" || selectedCategory === "cinematic") && (
               <div>
                 <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-4">
-                  <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+                  <span className="text-[12px] font-normal uppercase tracking-[0.18em] text-black">
                     Cinematic Walkthrough
                   </span>
                   <span className="text-[12px] font-medium text-muted-foreground">
@@ -544,7 +557,7 @@ function StudioPage() {
             {(selectedCategory === "all" || selectedCategory === "construction") && (
               <div>
                 <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-4">
-                  <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+                  <span className="text-[12px] font-normal uppercase tracking-[0.18em] text-black">
                     Construction Walkthrough
                   </span>
                   <span className="text-[12px] font-medium text-muted-foreground">
@@ -868,7 +881,11 @@ function StudioPage() {
                 disabled={!selectedTemplateId || uploadedPhotos.length === 0 || isLocked}
                 onClick={handleGenerate}
                 data-cursor="hover"
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-[14px] font-medium text-white shadow-md shadow-primary/25 transition-all duration-300 hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+                className={`btn-glow-effect group inline-flex h-11 items-center gap-2 rounded-full px-6 text-[14px] font-medium transition-all duration-300 ${
+                  !selectedTemplateId || uploadedPhotos.length === 0 || isLocked
+                    ? "opacity-40 cursor-not-allowed hover:scale-100 [animation-play-state:paused]"
+                    : "hover:scale-105"
+                }`}
               >
                 <Wand2 className="h-4 w-4" />
                 <span>Generate Video</span>
@@ -978,7 +995,9 @@ function StudioPage() {
 
           {/* Output specification text label under preview */}
           <p className="mt-4 text-center text-[12.5px] font-medium text-muted-foreground">
-            Output: {selectedShape} · {selectedQuality}
+            {stage === "generated" && selectedTemplate
+              ? `${selectedTemplate.name} · Output: ${selectedShape} · ${selectedQuality}`
+              : `Output: ${selectedShape} · ${selectedQuality}`}
           </p>
 
           {/* Reset button when generated */}
@@ -1001,7 +1020,7 @@ function StudioPage() {
             </motion.div>
           )}
         </div>
-      </main>
+      </motion.main>
 
       <Footer />
     </div>
@@ -1490,16 +1509,13 @@ function TemplateCard({
           isDisabled
             ? "opacity-0"
             : isSelected
-              ? "opacity-[0.32] animate-glow-pulse"
+              ? "opacity-[0.24]"
               : isHovered
-                ? "opacity-25"
+                ? "opacity-[0.14]"
                 : "opacity-0"
         }`}
         style={{
-          background:
-            isHovered && !isSelected
-              ? "radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(169,156,255,0.55), rgba(139,124,255,0.2) 45%, transparent 70%)"
-              : "linear-gradient(to bottom right, rgba(169,156,255,0.8), rgba(139,124,255,0.8))",
+          background: "radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(169,156,255,0.5), rgba(169,156,255,0.15) 50%, transparent 70%)",
         }}
       />
 
