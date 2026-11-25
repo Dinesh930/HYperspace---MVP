@@ -39,7 +39,9 @@ export const Route = createFileRoute("/studio")({
   component: StudioPage,
 });
 
-// const ACCESS_FORM_ID = "7Rgxz6"; // kept for later
+// Tally form ID/URL for video generation requests
+// Replace or update this with your final Tally URL or ID
+const TALLY_FORM_ID = "https://tally.so/r/7Rgxz6";
 const RESULT_VIDEO_SRC = `${VIDEO_BASE_URL}/template-06.mp4`;
 const MAX_PHOTOS = 6;
 const GENERATION_MS = 8000;
@@ -197,11 +199,30 @@ function StudioPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const previewPanelRef = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
   const photosRef = useRef<UploadedPhoto[]>([]);
   photosRef.current = uploadedPhotos;
 
   const isLocked = stage === "generating" || stage === "generated";
   const selectedTemplate = TEMPLATES.find((t) => t.id === selectedTemplateId) || null;
+
+  const handleSelectTemplate = (id: string) => {
+    if (isLocked) return;
+    if (id === selectedTemplateId) return;
+
+    setSelectedTemplateId(id);
+
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    setTimeout(() => {
+      step2Ref.current?.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    }, 80);
+  };
 
   // Template grouping
   const cinematicTemplates = TEMPLATES.filter((t) => t.category === "cinematic");
@@ -324,6 +345,8 @@ function StudioPage() {
     }
   }, []);
 
+  // Generation flow disabled: Generate button now opens Tally form. Kept for later re-enabling:
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleGenerate = () => {
     if (!selectedTemplateId || uploadedPhotos.length === 0 || stage !== "idle") return;
 
@@ -356,6 +379,36 @@ function StudioPage() {
         setStage("generated");
       }
     }, 100);
+  };
+
+  const handleOpenTallyForm = () => {
+    if (!selectedTemplateId || uploadedPhotos.length === 0 || isLocked) return;
+
+    const formIdOrUrl = TALLY_FORM_ID.replace("https://tally.so/r/", "");
+    const fullUrl = TALLY_FORM_ID.startsWith("http")
+      ? TALLY_FORM_ID
+      : `https://tally.so/r/${TALLY_FORM_ID}`;
+
+    const win = window as unknown as {
+      Tally?: {
+        openPopup: (
+          id: string,
+          options: {
+            layout: "modal";
+            width: number;
+          }
+        ) => void;
+      };
+    };
+
+    if (win.Tally) {
+      win.Tally.openPopup(formIdOrUrl, {
+        layout: "modal",
+        width: 700,
+      });
+    } else {
+      window.open(fullUrl, "_blank");
+    }
   };
 
   const handleReset = () => {
@@ -543,11 +596,7 @@ function StudioPage() {
                         setAudioId((prev) => (prev === tpl.id ? null : tpl.id))
                       }
                       isDisabled={isLocked}
-                      onSelect={() => {
-                        if (!isLocked) {
-                          setSelectedTemplateId(tpl.id);
-                        }
-                      }}
+                      onSelect={() => handleSelectTemplate(tpl.id)}
                     />
                   ))}
                 </div>
@@ -580,11 +629,7 @@ function StudioPage() {
                           setAudioId((prev) => (prev === tpl.id ? null : tpl.id))
                         }
                         isDisabled={isLocked}
-                        onSelect={() => {
-                          if (!isLocked) {
-                            setSelectedTemplateId(tpl.id);
-                          }
-                        }}
+                        onSelect={() => handleSelectTemplate(tpl.id)}
                       />
                     );
                   })}
@@ -597,7 +642,10 @@ function StudioPage() {
         {/* Lower Section: Step 2 & Step 3 Side-by-Side Row */}
         <div className="mt-10 grid grid-cols-1 items-stretch gap-8 lg:grid-cols-2 lg:gap-10">
           {/* STEP 2: Upload your photos */}
-          <div className="flex flex-col rounded-[24px] border border-border bg-white p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div
+            ref={step2Ref}
+            className="scroll-mt-24 flex flex-col rounded-[24px] border border-border bg-white p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
@@ -879,7 +927,7 @@ function StudioPage() {
               <button
                 type="button"
                 disabled={!selectedTemplateId || uploadedPhotos.length === 0 || isLocked}
-                onClick={handleGenerate}
+                onClick={handleOpenTallyForm}
                 data-cursor="hover"
                 className={`btn-glow-effect group inline-flex h-11 items-center gap-2 rounded-full px-6 text-[14px] font-medium transition-all duration-300 ${
                   !selectedTemplateId || uploadedPhotos.length === 0 || isLocked
