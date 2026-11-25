@@ -1,21 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef, type DragEvent, type ChangeEvent } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  Wand2,
+  ArrowRight,
+  RotateCcw,
+  Check,
+  Sparkles,
   Upload,
-  Play,
-  Pause,
+  Film,
+  X,
   Volume2,
   VolumeX,
-  Sparkles,
-  RefreshCw,
-  Video,
-  FileImage,
-  Trash2,
-  Film,
-  Compass,
-  Zap,
 } from "lucide-react";
 import {
   useScrolled,
@@ -27,240 +24,328 @@ import {
   Footer,
   Badge,
 } from "../components/site-chrome";
+import { VIDEO_BASE_URL } from "../lib/videos";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
-    meta: [
-      { title: "AI Video Studio — Cinora AI" },
-      {
-        name: "description",
-        content: "Turn your listing photos into cinematic AI-generated videos in real-time.",
-      },
-    ],
+    meta: [{ title: "Studio — Hyperspace" }],
   }),
   component: StudioPage,
 });
 
-interface GalleryItem {
+const ACCESS_FORM_ID = "7Rgxz6";
+const MAX_PHOTOS = 6;
+const GENERATION_MS = 8000;
+const VIDEO_SECONDS = 15;
+const VIDEO_FIT: "blur" | "cover" = "blur";
+
+// Slot assignments for the 4x5 construction magazine grid
+const SLOT_BY_TEMPLATE: Record<string, { slot: string; type: "portrait" | "landscape" }> = {
+  "template-07": { slot: "slot-p1", type: "portrait" },
+  "template-08": { slot: "slot-p2", type: "portrait" },
+  "template-09": { slot: "slot-p3", type: "portrait" },
+  "template-10": { slot: "slot-l1", type: "landscape" },
+  "template-11": { slot: "slot-l2", type: "landscape" },
+  "template-12": { slot: "slot-l3", type: "landscape" },
+  "template-13": { slot: "slot-p4", type: "portrait" },
+  "template-14": { slot: "slot-l4", type: "landscape" },
+  "template-15": { slot: "slot-l5", type: "landscape" },
+  "template-16": { slot: "slot-l6", type: "landscape" },
+  "template-17": { slot: "slot-l7", type: "landscape" },
+  "template-18": { slot: "slot-l8", type: "landscape" },
+  "template-19": { slot: "slot-l9", type: "landscape" },
+  "template-20": { slot: "slot-l10", type: "landscape" },
+};
+
+const CATEGORIES = [
+  { id: "all", label: "All" },
+  { id: "cinematic", label: "Cinematic Walkthrough" },
+  { id: "construction", label: "Construction Walkthrough" },
+] as const;
+
+const QUALITIES = ["480p", "720p", "1080p"] as const;
+
+const SHAPES = [
+  { id: "16:9", label: "16:9", name: "Landscape" },
+  { id: "9:16", label: "9:16", name: "Vertical" },
+  { id: "1:1", label: "1:1", name: "Square" },
+] as const;
+
+interface Template {
   id: string;
-  title: string;
-  thumbnail: string;
-  videoUrl: string;
-  duration: string;
+  name: string;
+  videoSrc: string;
+  category: "cinematic" | "construction";
+  orientation: "landscape" | "portrait";
 }
 
-const GALLERY_ITEMS: GalleryItem[] = [
-  {
-    id: "living-room",
-    title: "Luxury Living Room Pan",
-    thumbnail: "/images/showcase/s2.png",
-    videoUrl: "/videos/generated_sample.mp4",
-    duration: "5s",
-  },
-  {
-    id: "kitchen",
-    title: "Modern Kitchen Slide",
-    thumbnail: "/images/showcase/s3.png",
-    videoUrl: "/videos/generated_sample.mp4",
-    duration: "5s",
-  },
-  {
-    id: "bar",
-    title: "Executive Lounge View",
-    thumbnail: "/images/showcase/s5.png",
-    videoUrl: "/videos/generated_sample.mp4",
-    duration: "5s",
-  },
-  {
-    id: "bedroom",
-    title: "Cozy Master Suite Zoom",
-    thumbnail: "/images/showcase/s6.png",
-    videoUrl: "/videos/generated_sample.mp4",
-    duration: "5s",
-  },
+// Categories & Orientations:
+// template-01 to template-06: category "cinematic", orientation "landscape"
+// template-07, template-08, template-09: category "construction", orientation "portrait"
+// template-10, template-11, template-12: category "construction", orientation "landscape"
+// template-13: category "construction", orientation "portrait"
+// template-14 to template-20: category "construction", orientation "landscape"
+const TEMPLATE_CONFIG: Record<
+  number,
+  { category: "cinematic" | "construction"; orientation: "landscape" | "portrait" }
+> = {
+  1: { category: "cinematic", orientation: "landscape" },
+  2: { category: "cinematic", orientation: "landscape" },
+  3: { category: "cinematic", orientation: "landscape" },
+  4: { category: "cinematic", orientation: "landscape" },
+  5: { category: "cinematic", orientation: "landscape" },
+  6: { category: "cinematic", orientation: "landscape" },
+  7: { category: "construction", orientation: "portrait" },
+  8: { category: "construction", orientation: "portrait" },
+  9: { category: "construction", orientation: "portrait" },
+  10: { category: "construction", orientation: "landscape" },
+  11: { category: "construction", orientation: "landscape" },
+  12: { category: "construction", orientation: "landscape" },
+  13: { category: "construction", orientation: "portrait" },
+  14: { category: "construction", orientation: "landscape" },
+  15: { category: "construction", orientation: "landscape" },
+  16: { category: "construction", orientation: "landscape" },
+  17: { category: "construction", orientation: "landscape" },
+  18: { category: "construction", orientation: "landscape" },
+  19: { category: "construction", orientation: "landscape" },
+  20: { category: "construction", orientation: "landscape" },
+};
+
+const TEMPLATES: Template[] = Array.from({ length: 20 }, (_, i) => {
+  const num = i + 1;
+  const idNum = String(num).padStart(2, "0");
+  const cfg = TEMPLATE_CONFIG[num];
+  return {
+    id: `template-${idNum}`,
+    name: `Template ${idNum}`,
+    videoSrc: `${VIDEO_BASE_URL}/template-${idNum}.mp4`,
+    category: cfg.category,
+    orientation: cfg.orientation,
+  };
+});
+
+const STATUS_MESSAGES = [
+  "Reading your photos...",
+  "Matching camera moves to each room...",
+  "Applying the cinematic template...",
+  "Rendering frames...",
+  "Finalizing your walkthrough...",
 ];
 
-const GENERATION_STEPS = [
-  "Uploading image assets...",
-  "Analyzing composition & lighting...",
-  "Synthesizing camera pan vector...",
-  "Rendering high-fidelity frames...",
-  "Finalizing video export...",
-];
+interface UploadedPhoto {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
 
 function StudioPage() {
   const scrolled = useScrolled();
   useRevealOnScroll();
 
-  // Upload state
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isDragActive, setIsDragActive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedQuality, setSelectedQuality] = useState<string>("1080p");
+  const [selectedShape, setSelectedShape] = useState<string>("16:9");
+  const [audioId, setAudioId] = useState<string | null>(null);
 
-  // Generation state
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([]);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [stage, setStage] = useState<"idle" | "generating" | "generated">("idle");
   const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState("");
+  const [statusStep, setStatusStep] = useState(0);
 
-  // Video state
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [activeTitle, setActiveTitle] = useState<string>("");
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previewPanelRef = useRef<HTMLDivElement>(null);
+  const photosRef = useRef<UploadedPhoto[]>([]);
+  photosRef.current = uploadedPhotos;
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const isLocked = stage === "generating" || stage === "generated";
+  const selectedTemplate = TEMPLATES.find((t) => t.id === selectedTemplateId) || null;
 
-  // Clean up object URLs to prevent memory leaks
+  // Template grouping
+  const cinematicTemplates = TEMPLATES.filter((t) => t.category === "cinematic");
+  const constructionTemplates = TEMPLATES.filter((t) => t.category === "construction");
+
+  const visibleGroups =
+    selectedCategory === "all"
+      ? [
+          { id: "cinematic", title: "Cinematic Walkthrough", templates: cinematicTemplates },
+          { id: "construction", title: "Construction Walkthrough", templates: constructionTemplates },
+        ]
+      : selectedCategory === "cinematic"
+        ? [{ id: "cinematic", title: "Cinematic Walkthrough", templates: cinematicTemplates }]
+        : [{ id: "construction", title: "Construction Walkthrough", templates: constructionTemplates }];
+
+  // Cleanup object URLs on unmount
   useEffect(() => {
     return () => {
-      if (imagePreview && imagePreview.startsWith("blob:")) {
-        URL.revokeObjectURL(imagePreview);
+      photosRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
       }
     };
-  }, [imagePreview]);
+  }, []);
 
-  // Drag & drop handlers
-  const handleDrag = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setIsDragActive(true);
-    } else if (e.type === "dragleave") {
-      setIsDragActive(false);
-    }
-  };
+  const handleFiles = (fileList: FileList | File[]) => {
+    if (isLocked) return;
+    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    if (files.length === 0) return;
 
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith("image/")) {
-        setImageFile(file);
-        setImagePreview(URL.createObjectURL(file));
-        setVideoUrl(null); // Reset video if new image is uploaded
+    setUploadedPhotos((prev) => {
+      const totalCount = prev.length + files.length;
+      if (totalCount > MAX_PHOTOS) {
+        setUploadNotice("You can add up to 6 photos.");
+      } else {
+        setUploadNotice(null);
       }
-    }
+      const availableSlots = Math.max(0, MAX_PHOTOS - prev.length);
+      const toAdd = files.slice(0, availableSlots).map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
+      return [...prev, ...toAdd];
+    });
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-      setVideoUrl(null); // Reset video if new image is uploaded
-    }
+  const handleRemovePhoto = (id: string) => {
+    if (isLocked) return;
+    setUploadedPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      const next = prev.filter((p) => p.id !== id);
+      if (next.length <= MAX_PHOTOS) {
+        setUploadNotice(null);
+      }
+      return next;
+    });
   };
 
-  const triggerFileSelect = () => {
-    fileInputRef.current?.click();
-  };
-
-  const removeImage = () => {
-    setImageFile(null);
-    if (imagePreview && imagePreview.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreview);
-    }
-    setImagePreview(null);
-    setVideoUrl(null);
-  };
-
-  // Generation simulation
   const handleGenerate = () => {
-    if (!imageFile) return;
+    if (!selectedTemplateId || uploadedPhotos.length === 0 || stage !== "idle") return;
 
-    setIsGenerating(true);
-    setCountdown(5);
+    setStage("generating");
     setProgress(0);
-    setVideoUrl(null);
+    setStatusStep(0);
+
+    previewPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
     const startTime = Date.now();
-    const duration = 5000; // 5 seconds
-
-    const interval = setInterval(() => {
+    timerRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const pct = Math.min(100, Math.floor((elapsed / duration) * 100));
-      const secondsLeft = Math.max(0, 5 - Math.floor(elapsed / 1000));
-
+      const pct = Math.min(100, Math.floor((elapsed / GENERATION_MS) * 100));
       setProgress(pct);
-      setCountdown(secondsLeft);
 
-      // Determine active status message based on progress
-      const stepIndex = Math.min(
-        GENERATION_STEPS.length - 1,
-        Math.floor((pct / 100) * GENERATION_STEPS.length),
+      const stepIdx = Math.min(
+        STATUS_MESSAGES.length - 1,
+        Math.floor((pct / 100) * STATUS_MESSAGES.length)
       );
-      setCurrentStep(GENERATION_STEPS[stepIndex]);
+      setStatusStep(stepIdx);
 
-      if (elapsed >= duration) {
-        clearInterval(interval);
-        setIsGenerating(false);
-        setVideoUrl("/videos/generated_sample.mp4");
-        setActiveTitle(`AI Showcase - ${imageFile.name.split(".")[0]}`);
-        setIsPlaying(true);
-        setIsMuted(true);
+      if (elapsed >= GENERATION_MS) {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        setProgress(100);
+        setStage("generated");
       }
     }, 100);
   };
 
-  // Playback control handlers
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        videoRef.current.play().catch((err) => console.log("Play failed", err));
-        setIsPlaying(true);
-      }
+  const handleReset = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setStage("idle");
+    setSelectedTemplateId(null);
+    setSelectedCategory("all");
+    setSelectedQuality("1080p");
+    setSelectedShape("16:9");
+    setAudioId(null);
+    uploadedPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setUploadedPhotos([]);
+    setUploadNotice(null);
+    setProgress(0);
+    setStatusStep(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleApplyAccess = () => {
+    const win = window as unknown as {
+      Tally?: {
+        openPopup: (id: string, options: { layout: string; width: number }) => void;
+      };
+    };
+    if (win.Tally) {
+      win.Tally.openPopup(ACCESS_FORM_ID, { layout: "modal", width: 700 });
+    } else {
+      window.open(`https://tally.so/r/${ACCESS_FORM_ID}`, "_blank");
     }
   };
 
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
-    }
-  };
-
-  const restartVideo = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch((err) => console.log("Play failed", err));
-      setIsPlaying(true);
-    }
-  };
-
-  // Handler for clicking recent creation
-  const handleSelectRecent = (item: GalleryItem) => {
-    removeImage();
-    setVideoUrl(item.videoUrl);
-    setActiveTitle(item.title);
-    setIsPlaying(true);
-    setIsMuted(true);
-
-    // Scroll smoothly to player
-    const playerEl = document.getElementById("studio-viewport");
-    if (playerEl) {
-      playerEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  };
+  const previewShapeClass =
+    selectedShape === "9:16"
+      ? "aspect-[9/16] w-full max-w-[260px] mx-auto"
+      : selectedShape === "1:1"
+        ? "aspect-square w-full max-w-[320px] mx-auto"
+        : "aspect-video w-full mx-auto";
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background text-foreground">
+      <style>{`
+/* CINEMATIC WALKTHROUGH: asymmetric editorial, 6 columns (4+2, 2+4, 3+3) */
+.gallery-cinematic { display: grid; grid-template-columns: repeat(6, 1fr); gap: 21px; }
+.gallery-cinematic .tpl-card { position: relative; height: 270px; border-radius: 19px; overflow: hidden; }
+.gallery-cinematic .tpl-card:nth-child(1) { grid-column: span 4; }
+.gallery-cinematic .tpl-card:nth-child(2) { grid-column: span 2; }
+.gallery-cinematic .tpl-card:nth-child(3) { grid-column: span 2; }
+.gallery-cinematic .tpl-card:nth-child(4) { grid-column: span 4; }
+.gallery-cinematic .tpl-card:nth-child(5) { grid-column: span 3; }
+.gallery-cinematic .tpl-card:nth-child(6) { grid-column: span 3; }
+@media (max-width: 768px) {
+  .gallery-cinematic { grid-template-columns: 1fr; }
+  .gallery-cinematic .tpl-card { grid-column: span 1 !important; height: auto; aspect-ratio: 16 / 10; }
+}
+
+/* CONSTRUCTION WALKTHROUGH: editorial magazine, 4 columns x 5 rows */
+.gallery-construction { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 195px; gap: 13px; }
+.gallery-construction .tpl-card { position: relative; overflow: hidden; border-radius: 14px; }
+.gallery-construction .slot-p1  { grid-column: 1 / span 1; grid-row: 1 / span 2; }
+.gallery-construction .slot-l1  { grid-column: 2 / span 2; grid-row: 1 / span 1; }
+.gallery-construction .slot-l2  { grid-column: 4 / span 1; grid-row: 1 / span 1; }
+.gallery-construction .slot-l3  { grid-column: 2 / span 1; grid-row: 2 / span 1; }
+.gallery-construction .slot-l4  { grid-column: 3 / span 1; grid-row: 2 / span 1; }
+.gallery-construction .slot-p2  { grid-column: 4 / span 1; grid-row: 2 / span 2; }
+.gallery-construction .slot-l5  { grid-column: 1 / span 1; grid-row: 3 / span 1; }
+.gallery-construction .slot-p3  { grid-column: 2 / span 1; grid-row: 3 / span 2; }
+.gallery-construction .slot-l6  { grid-column: 3 / span 1; grid-row: 3 / span 1; }
+.gallery-construction .slot-p4  { grid-column: 1 / span 1; grid-row: 4 / span 2; }
+.gallery-construction .slot-l7  { grid-column: 3 / span 2; grid-row: 4 / span 1; }
+.gallery-construction .slot-l8  { grid-column: 2 / span 1; grid-row: 5 / span 1; }
+.gallery-construction .slot-l9  { grid-column: 3 / span 1; grid-row: 5 / span 1; }
+.gallery-construction .slot-l10 { grid-column: 4 / span 1; grid-row: 5 / span 1; }
+@media (max-width: 768px) {
+  .gallery-construction { grid-template-columns: repeat(2, 1fr); grid-auto-rows: auto; }
+  .gallery-construction .tpl-card { grid-column: auto !important; grid-row: auto !important; }
+  .gallery-construction .tpl-card[data-type="landscape"] { grid-column: span 2 !important; aspect-ratio: 16 / 10; }
+  .gallery-construction .tpl-card[data-type="portrait"] { grid-column: span 1 !important; aspect-ratio: 3 / 4; }
+}
+      `}</style>
       <HalftoneBackground />
       <AmbientGlows />
       <CursorTrail />
 
       <Nav scrolled={scrolled} />
 
-      <main className="relative z-10 mx-auto w-full max-w-[1000px] px-6 pt-12 pb-24">
-        {/* Breadcrumb Header */}
-        <div className="reveal">
+      <main className="relative z-10 mx-auto w-full max-w-[1240px] px-4 sm:px-6 pt-10 sm:pt-14 pb-24">
+        {/* Header */}
+        <div>
           <Link
             to="/"
             data-cursor="hover"
@@ -270,334 +355,739 @@ function StudioPage() {
             Back to Home
           </Link>
 
-          <div className="mt-6">
+          <div className="mt-5">
             <Badge>
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Creator Studio
+              Hyperspace Studio
             </Badge>
           </div>
 
-          <h1 className="mt-4 text-balance text-[36px] font-semibold leading-[1.08] tracking-[-0.02em] sm:text-[44px]">
-            AI Photo-to-Video Studio
+          <h1 className="mt-4 text-[17px] sm:text-[19px] sm:whitespace-nowrap md:text-[24px] lg:text-[32px] xl:text-[38px] font-semibold leading-[1.08] tracking-[-0.025em]">
+            Pick a cinematic style, upload up to 6 photos, and generate.
           </h1>
-          <p className="mt-3 max-w-[600px] text-[15px] leading-relaxed text-muted-foreground">
-            Upload any static listing image, click generate, and watch the AI synthesize premium
-            camera paths and cinematic transitions in real-time.
-          </p>
         </div>
 
-        {/* Studio Viewport Card */}
-        <div
-          id="studio-viewport"
-          className="reveal mt-10 overflow-hidden rounded-[24px] border border-border bg-white p-4 shadow-[0_12px_40px_-20px_rgba(15,23,42,0.15)] md:p-6"
-        >
-          {/* Main workspace area */}
-          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-black/5">
-            {/* Ambient Background Blur inside the player for premium feel */}
-            <div
-              className="absolute inset-0 bg-cover bg-center opacity-10 blur-xl transition-all duration-700"
-              style={{
-                backgroundImage: imagePreview ? `url(${imagePreview})` : "none",
-              }}
-            />
+        {/* STEP 1: Choose a template (Full Width) */}
+        <div className="mt-10 rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+            Step 1
+          </span>
+          <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-foreground">
+            Choose a template
+          </h2>
 
-            {/* 1. Drag & Drop Upload Zone (Default state) */}
-            {!imagePreview && !videoUrl && !isGenerating && (
+          {/* Category Tabs */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                disabled={isLocked}
+                onClick={() => setSelectedCategory(cat.id)}
+                data-cursor="hover"
+                className={`rounded-full px-4 py-1.5 text-[12.5px] sm:text-[13px] font-medium transition-all ${
+                  selectedCategory === cat.id
+                    ? "bg-primary text-white shadow-sm"
+                    : "border border-border bg-white text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Grouped Galleries */}
+          <div className="mt-6 flex flex-col gap-12">
+            {(selectedCategory === "all" || selectedCategory === "cinematic") && (
+              <div>
+                <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-4">
+                  <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+                    Cinematic Walkthrough
+                  </span>
+                  <span className="text-[12px] font-medium text-muted-foreground">
+                    {cinematicTemplates.length} templates
+                  </span>
+                </div>
+
+                <div className="gallery-cinematic">
+                  {cinematicTemplates.map((tpl) => (
+                    <TemplateCard
+                      key={tpl.id}
+                      template={tpl}
+                      dataType="landscape"
+                      isSelected={tpl.id === selectedTemplateId}
+                      isAudioOn={audioId === tpl.id}
+                      onToggleAudio={() =>
+                        setAudioId((prev) => (prev === tpl.id ? null : tpl.id))
+                      }
+                      isDisabled={isLocked}
+                      onSelect={() => {
+                        if (!isLocked) {
+                          setSelectedTemplateId(tpl.id);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(selectedCategory === "all" || selectedCategory === "construction") && (
+              <div>
+                <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-4">
+                  <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+                    Construction Walkthrough
+                  </span>
+                  <span className="text-[12px] font-medium text-muted-foreground">
+                    {constructionTemplates.length} templates
+                  </span>
+                </div>
+
+                <div className="gallery-construction">
+                  {constructionTemplates.map((tpl) => {
+                    const slotInfo = SLOT_BY_TEMPLATE[tpl.id] || { slot: "", type: tpl.orientation };
+                    return (
+                      <TemplateCard
+                        key={tpl.id}
+                        template={tpl}
+                        slotClass={slotInfo.slot}
+                        dataType={slotInfo.type}
+                        isSelected={tpl.id === selectedTemplateId}
+                        isAudioOn={audioId === tpl.id}
+                        onToggleAudio={() =>
+                          setAudioId((prev) => (prev === tpl.id ? null : tpl.id))
+                        }
+                        isDisabled={isLocked}
+                        onSelect={() => {
+                          if (!isLocked) {
+                            setSelectedTemplateId(tpl.id);
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Lower Two-Column Section: Left = Step 2 & 3, Right = Sticky Preview Panel */}
+        <div className="mt-10 grid grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_360px]">
+          {/* Left Column: Step 2 and Step 3 */}
+          <div className="min-w-0">
+            {/* STEP 2: Upload your photos */}
+            <div className="rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+                    Step 2
+                  </span>
+                  <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-foreground">
+                    Upload your photos
+                  </h2>
+                </div>
+                <span className="text-[12.5px] font-semibold text-muted-foreground">
+                  {uploadedPhotos.length} / {MAX_PHOTOS} photos
+                </span>
+              </div>
+
+              {/* Drop Zone */}
               <div
-                className={`relative flex h-full w-full flex-col items-center justify-center border-2 border-dashed px-6 transition-all duration-300 ${
-                  isDragActive
-                    ? "border-primary bg-primary/5 scale-[0.99] rounded-2xl"
-                    : "border-border hover:border-primary/40 hover:bg-black/[0.01]"
-                } rounded-2xl cursor-pointer`}
-                onDragEnter={handleDrag}
-                onDragOver={handleDrag}
-                onDragLeave={handleDrag}
-                onDrop={handleDrop}
-                onClick={triggerFileSelect}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!isLocked) setIsDragOver(true);
+                }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(false);
+                  if (!isLocked && e.dataTransfer.files) {
+                    handleFiles(e.dataTransfer.files);
+                  }
+                }}
+                onClick={() => {
+                  if (!isLocked) fileInputRef.current?.click();
+                }}
+                data-cursor="hover"
+                className={`mt-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-all duration-200 ${
+                  isLocked
+                    ? "border-border/60 bg-neutral-50/50 opacity-60 cursor-not-allowed"
+                    : isDragOver
+                      ? "border-primary bg-primary/[0.04] scale-[0.99] cursor-pointer"
+                      : "border-border hover:border-primary/50 hover:bg-neutral-50/60 cursor-pointer"
+                }`}
               >
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={handleFileChange}
+                  multiple
+                  disabled={isLocked}
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      handleFiles(e.target.files);
+                      e.target.value = "";
+                    }
+                  }}
                   className="hidden"
                 />
-
-                <div className="animate-bob grid h-16 w-16 place-items-center rounded-2xl bg-primary/10 text-primary">
-                  <Upload className="h-7 w-7" />
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+                  <Upload className="h-6 w-6" />
                 </div>
-
-                <h3 className="mt-6 text-[18px] font-semibold tracking-tight text-foreground">
-                  Drag & Drop Property Photo
-                </h3>
-                <p className="mt-2 text-center text-[13.5px] text-muted-foreground max-w-[380px]">
-                  Drop a high-resolution interior, exterior, or aerial shot here, or{" "}
-                  <span className="text-primary font-medium underline underline-offset-2">
-                    browse files
-                  </span>
+                <p className="mt-3 text-[14px] font-semibold text-foreground">
+                  Drag and drop photos here, or click to browse
                 </p>
-                <div className="mt-6 flex flex-wrap justify-center gap-3 text-[11px] font-medium text-muted-foreground/80">
-                  <span className="flex items-center gap-1 bg-black/5 px-2.5 py-1.5 rounded-md">
-                    <Video className="h-3 w-3" /> Auto camera motion
-                  </span>
-                  <span className="flex items-center gap-1 bg-black/5 px-2.5 py-1.5 rounded-md">
-                    <Compass className="h-3 w-3" /> Real estate tuned
-                  </span>
-                </div>
+                <p className="mt-1 text-[12.5px] text-muted-foreground">
+                  Up to 6 photos · JPG, PNG, WEBP
+                </p>
               </div>
-            )}
 
-            {/* 2. Image Loaded state (Before generation) */}
-            {imagePreview && !videoUrl && !isGenerating && (
-              <div className="relative flex h-full w-full flex-col items-center justify-center p-6">
-                <img
-                  src={imagePreview}
-                  alt="Source Listing"
-                  className="h-full w-full rounded-xl object-contain shadow-md"
-                />
+              {uploadNotice && (
+                <p className="mt-2 text-[12.5px] font-medium text-amber-600">
+                  {uploadNotice}
+                </p>
+              )}
 
-                {/* Overlay actions */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-6 flex items-center justify-between">
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-medium tracking-wider text-white/70 uppercase">
-                      Ready to synthesize
-                    </p>
-                    <h4 className="text-[15px] font-semibold text-white truncate max-w-[280px]">
-                      {imageFile?.name || "Uploaded Image"}
-                    </h4>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={removeImage}
-                      data-cursor="hover"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 text-white hover:bg-white/30 backdrop-blur transition-all duration-300"
-                      title="Remove Image"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={handleGenerate}
-                      data-cursor="hover"
-                      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-5 text-[13.5px] font-medium text-white hover:bg-primary-hover shadow-lg shadow-primary/30 transition-all duration-300"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" /> Generate Video
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 3. Generating State (5-second countdown) */}
-            {isGenerating && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 p-8 text-white">
-                {/* Advanced pulsing/rotating gradient circle */}
-                <div className="relative flex h-32 w-32 items-center justify-center">
-                  {/* Rotating Conic Gradient Border */}
-                  <div
-                    className="absolute inset-0 rounded-full animate-spin-slow"
-                    style={{
-                      background: "conic-gradient(from 0deg, #6D5EF8, #8B7CFF, transparent 60%)",
-                      padding: "3px",
-                      mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                      maskComposite: "exclude",
-                      WebkitMaskComposite: "destination-out",
-                    }}
-                  />
-                  {/* Pulsing Radial Accent Core */}
-                  <div className="absolute inset-2 animate-pulse rounded-full bg-[#6D5EF8]/10" />
-
-                  {/* Countdown number */}
-                  <div className="relative text-center">
-                    <span className="text-3xl font-bold tracking-tight">{countdown}s</span>
-                    <p className="text-[10px] text-white/50 uppercase tracking-widest mt-0.5">
-                      remaining
-                    </p>
-                  </div>
-                </div>
-
-                {/* Progress Indicators */}
-                <div className="mt-8 w-full max-w-[320px] text-center">
-                  <div className="flex justify-between items-center text-[12.5px] font-medium mb-2 text-white/90">
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
-                      AI Generating
-                    </span>
-                    <span>{progress}%</span>
-                  </div>
-                  {/* Progress track */}
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              {/* Thumbnails grid */}
+              {uploadedPhotos.length > 0 && (
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {uploadedPhotos.map((photo, index) => (
                     <div
-                      className="h-full bg-gradient-to-r from-primary via-primary-soft to-[#8B7CFF] transition-all duration-100"
-                      style={{ width: `${progress}%` }}
-                    />
+                      key={photo.id}
+                      className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-neutral-100 shadow-sm"
+                    >
+                      <img
+                        src={photo.previewUrl}
+                        alt={`Upload ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      {/* Order number badge */}
+                      <span className="absolute top-1.5 left-1.5 grid h-5 w-5 place-items-center rounded-full bg-primary text-white text-[11px] font-bold shadow">
+                        {index + 1}
+                      </span>
+                      {/* Remove button */}
+                      {!isLocked && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemovePhoto(photo.id);
+                          }}
+                          data-cursor="hover"
+                          className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black transition-colors shadow"
+                          title="Remove photo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* STEP 3: Generate */}
+            <div className="mt-10 rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+              <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+                Step 3
+              </span>
+              <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-foreground">
+                Generate
+              </h2>
+
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Quality Group */}
+                <div>
+                  <span className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Quality
+                  </span>
+                  <div className="mt-2.5 grid grid-cols-3 gap-2">
+                    {QUALITIES.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        disabled={isLocked}
+                        onClick={() => setSelectedQuality(q)}
+                        data-cursor="hover"
+                        className={`rounded-xl border py-2.5 text-center text-[13px] font-medium transition-all ${
+                          selectedQuality === q
+                            ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
+                            : "border-border bg-white text-foreground hover:border-primary/30"
+                        } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                      >
+                        {q}
+                      </button>
+                    ))}
                   </div>
-                  {/* Running status log line */}
-                  <p className="mt-3 text-[13px] text-white/60 truncate italic">{currentStep}</p>
+                </div>
+
+                {/* Shape Group */}
+                <div>
+                  <span className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Shape
+                  </span>
+                  <div className="mt-2.5 grid grid-cols-3 gap-2">
+                    {SHAPES.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        disabled={isLocked}
+                        onClick={() => setSelectedShape(s.id)}
+                        data-cursor="hover"
+                        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 text-center transition-all ${
+                          selectedShape === s.id
+                            ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
+                            : "border-border bg-white text-foreground hover:border-primary/30"
+                        } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                      >
+                        {s.id === "16:9" && (
+                          <span className="block h-3.5 w-6 rounded-[2px] border-2 border-current" />
+                        )}
+                        {s.id === "9:16" && (
+                          <span className="block h-5 w-3.5 rounded-[2px] border-2 border-current" />
+                        )}
+                        {s.id === "1:1" && (
+                          <span className="block h-4 w-4 rounded-[2px] border-2 border-current" />
+                        )}
+                        <span className="text-[12px] font-semibold">{s.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{s.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* 4. Active Video Player state (Completed) */}
-            {videoUrl && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                className="relative h-full w-full bg-black animate-fade-in"
-                style={{ zIndex: 10, opacity: 1 }}
-              >
-                {/* Video elements */}
-                <video
-                  key="generated-video"
-                  ref={videoRef}
-                  className="h-full w-full object-cover"
-                  src={videoUrl}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  onError={(e) => {
-                    console.error("Browser failed to load video from URL:", videoUrl, e);
-                  }}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                />
-
-                {/* Video Overlays */}
-                <div className="absolute right-4 top-4 flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 rounded-md bg-black/60 px-2 py-1 text-[10px] font-semibold tracking-wider text-white backdrop-blur">
-                    <span className="cin-rec-dot h-1.5 w-1.5 rounded-full bg-red-500" />
-                    <span>REC PLAYBACK</span>
+              {/* Details Box */}
+              <div className="mt-6 rounded-2xl border border-border bg-neutral-50/70 p-5">
+                <h4 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Details
+                </h4>
+                <div className="mt-3 divide-y divide-border/60 text-[13.5px]">
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-muted-foreground">Template</span>
+                    <span className="font-medium text-foreground">
+                      {selectedTemplate ? selectedTemplate.name : "Not selected yet"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-muted-foreground">Category</span>
+                    <span className="font-medium text-foreground">
+                      {selectedTemplate
+                        ? selectedTemplate.category === "cinematic"
+                          ? "Cinematic Walkthrough"
+                          : "Construction Walkthrough"
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-muted-foreground">Quality</span>
+                    <span className="font-medium text-foreground">{selectedQuality}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-muted-foreground">Shape</span>
+                    <span className="font-medium text-foreground">
+                      {selectedShape} (
+                      {SHAPES.find((s) => s.id === selectedShape)?.name})
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-muted-foreground">Duration</span>
+                    <span className="font-medium text-foreground">{VIDEO_SECONDS} sec</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-muted-foreground">Photos</span>
+                    <span className="font-medium text-foreground">
+                      {uploadedPhotos.length} / {MAX_PHOTOS}
+                    </span>
                   </div>
                 </div>
+              </div>
 
-                {/* Bottom Custom Controls Bar */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 flex flex-col gap-2 opacity-90 transition-opacity hover:opacity-100">
-                  <div className="flex items-center justify-between text-white">
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">
-                        AI Video Generated
-                      </span>
-                      <h4 className="text-[14px] font-medium truncate">{activeTitle}</h4>
-                    </div>
-
-                    {/* Controller Actions */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={togglePlay}
-                        className="grid h-8 w-8 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition text-white"
-                        title={isPlaying ? "Pause" : "Play"}
-                      >
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </button>
-                      <button
-                        onClick={toggleMute}
-                        className="grid h-8 w-8 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition text-white"
-                        title={isMuted ? "Unmute" : "Mute"}
-                      >
-                        {isMuted ? (
-                          <VolumeX className="h-4 w-4" />
-                        ) : (
-                          <Volume2 className="h-4 w-4" />
-                        )}
-                      </button>
-                      <button
-                        onClick={restartVideo}
-                        className="grid h-8 w-8 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition text-white"
-                        title="Restart"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Action buttons under player */}
-          {(videoUrl || imagePreview) && !isGenerating && (
-            <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4 flex-wrap gap-3">
-              <p className="text-[12.5px] text-muted-foreground flex items-center gap-1.5">
-                <Film className="h-3.5 w-3.5 text-primary" /> Powered by Cinora's local state
-                simulation.
-              </p>
-              <div className="flex items-center gap-2">
+              {/* Generate Button & helper text */}
+              <div className="mt-6 flex flex-wrap items-center gap-4">
                 <button
-                  onClick={removeImage}
+                  type="button"
+                  disabled={!selectedTemplateId || uploadedPhotos.length === 0 || isLocked}
+                  onClick={handleGenerate}
                   data-cursor="hover"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-foreground hover:bg-neutral-50 transition"
+                  className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-[14px] font-medium text-white shadow-md shadow-primary/25 transition-all duration-300 hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  Clear Studio
+                  <Wand2 className="h-4 w-4" />
+                  <span>Generate Video</span>
                 </button>
-                {imagePreview && !videoUrl && (
-                  <button
-                    onClick={handleGenerate}
-                    data-cursor="hover"
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-5 text-[13px] font-medium text-white hover:bg-primary-hover shadow-md shadow-primary/20 transition"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" /> Start Generation
-                  </button>
-                )}
+                <span className="text-[13.5px] text-muted-foreground font-medium">
+                  {!selectedTemplateId
+                    ? "Select a template to continue."
+                    : uploadedPhotos.length === 0
+                      ? "Add at least one photo to continue."
+                      : `${selectedTemplate?.name} · ${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? "" : "s"}`}
+                </span>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Gallery Section */}
-        <section className="mt-16">
-          <div className="reveal">
-            <h2 className="text-[24px] font-semibold tracking-tight">Recent Creations</h2>
-            <p className="mt-1.5 text-[14px] text-muted-foreground">
-              Select one of our pre-rendered studio outputs to instantly load and play it in the
-              viewer.
-            </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {GALLERY_ITEMS.map((item, index) => (
-              <div
-                key={item.id}
-                onClick={() => handleSelectRecent(item)}
-                data-cursor="hover"
-                className="reveal group cursor-pointer overflow-hidden rounded-xl border border-border bg-white transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_16px_36px_-12px_rgba(109,94,248,0.25)]"
-                style={{ transitionDelay: `${index * 80}ms` }}
-              >
-                {/* Image Container */}
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-100">
-                  <img
-                    src={item.thumbnail}
-                    alt={item.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {/* Play Overlay */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-primary shadow-lg transform scale-90 group-hover:scale-100 transition-all duration-300">
-                      <Play className="h-4 w-4 fill-primary text-primary ml-0.5" />
-                    </span>
-                  </div>
-                  {/* Duration Badge */}
-                  <span className="absolute bottom-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                    {item.duration}
-                  </span>
-                </div>
-
-                {/* Text details */}
-                <div className="p-3">
-                  <h4 className="text-[13.5px] font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                    {item.title}
-                  </h4>
-                  <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
-                    AI Cinematic Video
-                  </span>
-                </div>
+          {/* Right Column: Sticky Preview Panel */}
+          <div ref={previewPanelRef} className="lg:sticky lg:top-24">
+            <div className="rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[17px] font-semibold tracking-tight text-foreground">
+                  Preview
+                </h2>
               </div>
-            ))}
+
+              {/* Preview Frame matching selected Shape */}
+              <div
+                className={`relative overflow-hidden rounded-[20px] bg-neutral-950 flex flex-col items-center justify-center shadow-inner transition-all duration-300 ${previewShapeClass}`}
+              >
+                {/* State 1: No template selected */}
+                {!selectedTemplate && stage === "idle" && (
+                  <div className="flex flex-col items-center justify-center gap-3 text-center px-4">
+                    <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/5 text-neutral-400">
+                      <Film className="h-6 w-6" />
+                    </div>
+                    <p className="text-[13px] text-neutral-400">
+                      Select a template to preview
+                    </p>
+                  </div>
+                )}
+
+                {/* State 2: Template selected and idle */}
+                {selectedTemplate && stage === "idle" && (
+                  <>
+                    <FitVideo
+                      key={selectedTemplate.videoSrc}
+                      src={selectedTemplate.videoSrc}
+                      playing={true}
+                      soundOn={false}
+                      loop={true}
+                    />
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-medium text-white backdrop-blur whitespace-nowrap shadow-sm z-10">
+                      {selectedTemplate.name}
+                    </div>
+                  </>
+                )}
+
+                {/* State 3: Generating */}
+                {stage === "generating" && (
+                  <div className="flex flex-col items-center justify-center p-6 text-center text-white w-full">
+                    {/* Spinning conic-gradient ring */}
+                    <div className="relative flex h-24 w-24 items-center justify-center">
+                      <div
+                        className="absolute inset-0 rounded-full animate-spin-slow"
+                        style={{
+                          background:
+                            "conic-gradient(from 0deg, #6D5EF8, #8B7CFF, transparent 60%)",
+                          padding: "3px",
+                          mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                          maskComposite: "exclude",
+                          WebkitMaskComposite: "destination-out",
+                        }}
+                      />
+                      <div className="absolute inset-2 animate-pulse rounded-full bg-[#6D5EF8]/10" />
+                      <span className="text-xl font-bold tracking-tight">{progress}%</span>
+                    </div>
+
+                    {/* Progress track & dynamic status */}
+                    <div className="mt-6 w-full max-w-[200px] text-center">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+                        <div
+                          className="h-full bg-gradient-to-r from-primary via-primary-soft to-[#8B7CFF] transition-all duration-100"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <p className="mt-3 min-h-[36px] flex items-center justify-center text-[12px] text-white/80 italic leading-snug">
+                        {STATUS_MESSAGES[statusStep]}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* State 4: Generated */}
+                {stage === "generated" && (
+                  <div className="flex flex-col items-center justify-center gap-3 text-center px-4">
+                    <div className="grid h-12 w-12 place-items-center rounded-full bg-primary/20 text-primary">
+                      <Check className="h-6 w-6 stroke-[2.5]" />
+                    </div>
+                    <p className="text-[14px] font-semibold text-white">
+                      Your video is generated
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Output specification text label under preview */}
+              <p className="mt-3 text-center text-[12px] font-medium text-muted-foreground">
+                Output: {selectedShape} · {selectedQuality}
+              </p>
+
+              {/* Actions revealed below frame when generated */}
+              {stage === "generated" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="mt-5 border-t border-border pt-5 text-center"
+                >
+                  <p className="text-[14px] font-medium text-foreground">
+                    Apply for access to get your video.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleApplyAccess}
+                      data-cursor="hover"
+                      className="btn-glow-effect group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full px-5 text-[13.5px] font-medium transition-all duration-300 hover:scale-[1.02]"
+                    >
+                      <span>Apply for Access</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      data-cursor="hover"
+                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-muted-foreground transition-all duration-200 hover:bg-neutral-50 hover:text-foreground"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Try another template</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
           </div>
-        </section>
+        </div>
       </main>
 
       <Footer />
+    </div>
+  );
+}
+
+function FitVideo({
+  src,
+  playing,
+  soundOn = false,
+  loop = true,
+  className = "",
+}: {
+  src: string;
+  playing: boolean;
+  soundOn?: boolean;
+  loop?: boolean;
+  className?: string;
+}) {
+  const mainVideoRef = useRef<HTMLVideoElement>(null);
+  const bgVideoRef = useRef<HTMLVideoElement>(null);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const main = mainVideoRef.current;
+    const bg = bgVideoRef.current;
+    if (!main || hasError) return;
+
+    main.muted = !soundOn;
+
+    if (playing) {
+      const playPromise = main.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            if (bg) {
+              bg.currentTime = main.currentTime;
+              bg.play().catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+    } else {
+      main.pause();
+      main.currentTime = 0.1;
+      if (bg) {
+        bg.pause();
+        bg.currentTime = 0.1;
+      }
+    }
+  }, [playing, soundOn, hasError]);
+
+  const handleTimeUpdate = () => {
+    const main = mainVideoRef.current;
+    const bg = bgVideoRef.current;
+    if (main && bg && Math.abs(main.currentTime - bg.currentTime) > 0.3) {
+      bg.currentTime = main.currentTime;
+    }
+  };
+
+  if (hasError) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-neutral-200 p-4 text-center">
+        <Film className="h-8 w-8 text-neutral-400" />
+        <span className="text-[11px] text-neutral-500 font-medium">Preview unavailable</span>
+      </div>
+    );
+  }
+
+  if (VIDEO_FIT === "cover") {
+    return (
+      <video
+        ref={mainVideoRef}
+        src={`${src}#t=0.1`}
+        preload="metadata"
+        playsInline
+        loop={loop}
+        onError={() => setHasError(true)}
+        className={`block h-full w-full object-cover ${className}`}
+      />
+    );
+  }
+
+  return (
+    <div className={`relative h-full w-full overflow-hidden ${className}`}>
+      {/* Layer 1: Blurred background fill */}
+      <video
+        ref={bgVideoRef}
+        src={`${src}#t=0.1`}
+        preload="metadata"
+        muted
+        playsInline
+        aria-hidden
+        loop={loop}
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover scale-125 blur-2xl opacity-80"
+      />
+
+      {/* Layer 2: Main video */}
+      <video
+        ref={mainVideoRef}
+        src={`${src}#t=0.1`}
+        preload="metadata"
+        playsInline
+        loop={loop}
+        onTimeUpdate={handleTimeUpdate}
+        onError={() => setHasError(true)}
+        className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+      />
+    </div>
+  );
+}
+
+function TemplateCard({
+  template,
+  slotClass = "",
+  dataType = "landscape",
+  isSelected,
+  isAudioOn,
+  onToggleAudio,
+  isDisabled,
+  onSelect,
+}: {
+  template: Template;
+  slotClass?: string;
+  dataType?: "portrait" | "landscape";
+  isSelected: boolean;
+  isAudioOn: boolean;
+  onToggleAudio: () => void;
+  isDisabled: boolean;
+  onSelect: () => void;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = () => {
+    if (isDisabled) return;
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+  };
+
+  const isPlaying = isSelected || isAudioOn || (isHovered && !isDisabled);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      data-type={dataType}
+      onClick={() => {
+        if (!isDisabled) {
+          onSelect();
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (!isDisabled) {
+            onSelect();
+          }
+        }
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      data-cursor="hover"
+      className={`tpl-card group relative bg-neutral-200 border border-black/10 overflow-hidden isolate transform-gpu transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary select-none cursor-pointer ${slotClass} ${
+        isSelected
+          ? "border-primary ring-2 ring-primary shadow-[0_0_24px_-4px_rgba(109,94,248,0.55)]"
+          : isDisabled
+            ? ""
+            : "hover:-translate-y-1 hover:border-primary/50 hover:shadow-[0_12px_30px_-10px_rgba(109,94,248,0.35)]"
+      }`}
+    >
+      <FitVideo
+        src={template.videoSrc}
+        playing={isPlaying}
+        soundOn={isAudioOn}
+        loop={isSelected || isAudioOn}
+      />
+
+      {/* Subtle Bottom Gradient */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/45 to-transparent z-[1]" />
+
+      {/* LOWER-LEFT: Template Name Pill */}
+      <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full bg-black/45 backdrop-blur px-3 py-1 text-[12.5px] font-semibold text-white shadow-sm">
+        {template.name}
+      </div>
+
+      {/* LOWER-RIGHT: Use this template / In use button */}
+      <button
+        type="button"
+        disabled={isDisabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+        data-cursor="hover"
+        className={`absolute bottom-3 right-3 z-10 flex h-8 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          isSelected
+            ? "bg-primary text-white"
+            : "bg-white/90 text-neutral-900 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+        }`}
+      >
+        {isSelected ? (
+          <>
+            <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+            <span>In use</span>
+          </>
+        ) : (
+          <span>Use this template</span>
+        )}
+      </button>
+
+      {/* TOP-RIGHT: Audio Toggle Button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleAudio();
+        }}
+        data-cursor="hover"
+        title={isAudioOn ? "Mute audio" : "Unmute audio"}
+        className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 backdrop-blur border border-white/15 text-white shadow-sm transition-colors hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {isAudioOn ? (
+          <Volume2 className="h-4 w-4" />
+        ) : (
+          <VolumeX className="h-4 w-4 text-white/70" />
+        )}
+      </button>
     </div>
   );
 }
