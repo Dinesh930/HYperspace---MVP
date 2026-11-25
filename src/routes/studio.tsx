@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { motion, Reorder } from "framer-motion";
+import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   ArrowLeft,
   Wand2,
@@ -35,7 +35,8 @@ export const Route = createFileRoute("/studio")({
   component: StudioPage,
 });
 
-const ACCESS_FORM_ID = "7Rgxz6";
+// const ACCESS_FORM_ID = "7Rgxz6"; // kept for later
+const RESULT_VIDEO_SRC = `${VIDEO_BASE_URL}/template-06.mp4`;
 const MAX_PHOTOS = 6;
 const GENERATION_MS = 8000;
 const VIDEO_SECONDS = 15;
@@ -147,7 +148,7 @@ const TEMPLATES: Template[] = Array.from({ length: 20 }, (_, i) => {
     category: cfg.category,
     orientation: cfg.orientation,
   };
-});
+}).filter((t) => t.id !== "template-06");
 
 const STATUS_MESSAGES = [
   "Reading your photos...",
@@ -172,6 +173,7 @@ function StudioPage() {
   const [selectedQuality, setSelectedQuality] = useState<string>("1080p");
   const [selectedShape, setSelectedShape] = useState<string>("16:9");
   const [audioId, setAudioId] = useState<string | null>(null);
+  const [isResultAudioOn, setIsResultAudioOn] = useState(true);
 
   const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([]);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
@@ -313,6 +315,7 @@ function StudioPage() {
   const handleGenerate = () => {
     if (!selectedTemplateId || uploadedPhotos.length === 0 || stage !== "idle") return;
 
+    setAudioId(null);
     setStage("generating");
     setProgress(0);
     setStatusStep(0);
@@ -337,6 +340,7 @@ function StudioPage() {
           timerRef.current = null;
         }
         setProgress(100);
+        setIsResultAudioOn(true);
         setStage("generated");
       }
     }, 100);
@@ -353,6 +357,7 @@ function StudioPage() {
     setSelectedQuality("1080p");
     setSelectedShape("16:9");
     setAudioId(null);
+    setIsResultAudioOn(true);
     uploadedPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     setUploadedPhotos([]);
     setUploadNotice(null);
@@ -361,6 +366,7 @@ function StudioPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  /*
   const handleApplyAccess = () => {
     const win = window as unknown as {
       Tally?: {
@@ -373,6 +379,7 @@ function StudioPage() {
       window.open(`https://tally.so/r/${ACCESS_FORM_ID}`, "_blank");
     }
   };
+  */
 
   const previewShapeClass =
     selectedShape === "9:16"
@@ -423,11 +430,11 @@ function StudioPage() {
 }
 
 @keyframes glow-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.03); opacity: 0.85; }
+  0%, 100% { transform: scale(1); opacity: 0.32; }
+  50% { transform: scale(1.02); opacity: 0.26; }
 }
 .animate-glow-pulse {
-  animation: glow-pulse 2.4s ease-in-out infinite;
+  animation: glow-pulse 3s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .animate-glow-pulse {
@@ -737,7 +744,7 @@ function StudioPage() {
             </div>
 
             {/* STEP 3: Generate */}
-            <div className="mt-10 rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="mt-10 rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col items-start text-left">
               <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
                 Step 3
               </span>
@@ -745,13 +752,13 @@ function StudioPage() {
                 Generate
               </h2>
 
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="mt-5 grid w-full grid-cols-1 sm:grid-cols-2 gap-6 items-start">
                 {/* Quality Group */}
-                <div>
+                <div className="flex flex-col items-start w-full">
                   <span className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Quality
                   </span>
-                  <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  <div className="mt-2.5 grid w-full grid-cols-3 gap-2">
                     {QUALITIES.map((q) => (
                       <button
                         key={q}
@@ -759,7 +766,7 @@ function StudioPage() {
                         disabled={isLocked}
                         onClick={() => setSelectedQuality(q)}
                         data-cursor="hover"
-                        className={`rounded-xl border py-2.5 text-center text-[13px] font-medium transition-all ${
+                        className={`h-11 rounded-xl border py-2 text-center text-[13px] font-medium transition-all ${
                           selectedQuality === q
                             ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
                             : "border-border bg-white text-foreground hover:border-primary/30"
@@ -772,11 +779,11 @@ function StudioPage() {
                 </div>
 
                 {/* Shape Group */}
-                <div>
+                <div className="flex flex-col items-start w-full">
                   <span className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Shape
                   </span>
-                  <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  <div className="mt-2.5 grid w-full grid-cols-3 gap-2">
                     {SHAPES.map((s) => (
                       <button
                         key={s.id}
@@ -784,23 +791,22 @@ function StudioPage() {
                         disabled={isLocked}
                         onClick={() => setSelectedShape(s.id)}
                         data-cursor="hover"
-                        className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border p-2.5 text-center transition-all ${
+                        className={`flex h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-center transition-all ${
                           selectedShape === s.id
                             ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
                             : "border-border bg-white text-foreground hover:border-primary/30"
                         } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                       >
                         {s.id === "16:9" && (
-                          <span className="block h-3.5 w-6 rounded-[2px] border-2 border-current" />
+                          <span className="block h-3.5 w-6 rounded-[2px] border-2 border-current shrink-0" />
                         )}
                         {s.id === "9:16" && (
-                          <span className="block h-5 w-3.5 rounded-[2px] border-2 border-current" />
+                          <span className="block h-5 w-3.5 rounded-[2px] border-2 border-current shrink-0" />
                         )}
                         {s.id === "1:1" && (
-                          <span className="block h-4 w-4 rounded-[2px] border-2 border-current" />
+                          <span className="block h-4 w-4 rounded-[2px] border-2 border-current shrink-0" />
                         )}
                         <span className="text-[12px] font-semibold">{s.label}</span>
-                        <span className="text-[10px] text-muted-foreground">{s.name}</span>
                       </button>
                     ))}
                   </div>
@@ -808,7 +814,7 @@ function StudioPage() {
               </div>
 
               {/* Details Box */}
-              <div className="mt-6 rounded-2xl border border-border bg-neutral-50/70 p-5">
+              <div className="mt-6 w-full rounded-2xl border border-border bg-neutral-50/70 p-5 text-left">
                 <h4 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Details
                 </h4>
@@ -887,15 +893,15 @@ function StudioPage() {
 
               {/* Preview Frame matching selected Shape */}
               <div
-                className={`relative overflow-hidden rounded-[20px] bg-neutral-950 flex flex-col items-center justify-center shadow-inner transition-all duration-300 ${previewShapeClass}`}
+                className={`relative overflow-hidden rounded-[20px] bg-neutral-200 flex flex-col items-center justify-center shadow-inner transition-all duration-300 ${previewShapeClass}`}
               >
                 {/* State 1: No template selected */}
                 {!selectedTemplate && stage === "idle" && (
                   <div className="flex flex-col items-center justify-center gap-3 text-center px-4">
-                    <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/5 text-neutral-400">
+                    <div className="grid h-12 w-12 place-items-center rounded-2xl bg-black/5 text-neutral-400">
                       <Film className="h-6 w-6" />
                     </div>
-                    <p className="text-[13px] text-neutral-400">
+                    <p className="text-[13px] text-neutral-500 font-medium">
                       Select a template to preview
                     </p>
                   </div>
@@ -903,23 +909,31 @@ function StudioPage() {
 
                 {/* State 2: Template selected and idle */}
                 {selectedTemplate && stage === "idle" && (
-                  <>
-                    <FitVideo
-                      key={selectedTemplate.videoSrc}
-                      src={selectedTemplate.videoSrc}
-                      playing={true}
-                      soundOn={false}
-                      loop={true}
-                    />
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-medium text-white backdrop-blur whitespace-nowrap shadow-sm z-10">
-                      {selectedTemplate.name}
-                    </div>
-                  </>
+                  <AnimatePresence mode="sync">
+                    <motion.div
+                      key={selectedTemplate.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      className="absolute inset-0 h-full w-full"
+                    >
+                      <FitVideo
+                        src={selectedTemplate.videoSrc}
+                        playing={true}
+                        soundOn={false}
+                        loop={true}
+                      />
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-medium text-white backdrop-blur whitespace-nowrap shadow-sm z-10 pointer-events-none">
+                        {selectedTemplate.name}
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
                 )}
 
                 {/* State 3: Generating */}
                 {stage === "generating" && (
-                  <div className="flex flex-col items-center justify-center p-6 text-center text-white w-full">
+                  <div className="flex flex-col items-center justify-center p-6 text-center text-foreground w-full">
                     {/* Spinning conic-gradient ring */}
                     <div className="relative flex h-24 w-24 items-center justify-center">
                       <div
@@ -934,18 +948,18 @@ function StudioPage() {
                         }}
                       />
                       <div className="absolute inset-2 animate-pulse rounded-full bg-[#6D5EF8]/10" />
-                      <span className="text-xl font-bold tracking-tight">{progress}%</span>
+                      <span className="text-xl font-bold tracking-tight text-neutral-900">{progress}%</span>
                     </div>
 
                     {/* Progress track & dynamic status */}
                     <div className="mt-6 w-full max-w-[200px] text-center">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-300">
                         <div
                           className="h-full bg-gradient-to-r from-primary via-primary-soft to-[#8B7CFF] transition-all duration-100"
                           style={{ width: `${progress}%` }}
                         />
                       </div>
-                      <p className="mt-3 min-h-[36px] flex items-center justify-center text-[12px] text-white/80 italic leading-snug">
+                      <p className="mt-3 min-h-[36px] flex items-center justify-center text-[12px] text-neutral-600 italic leading-snug">
                         {STATUS_MESSAGES[statusStep]}
                       </p>
                     </div>
@@ -954,13 +968,31 @@ function StudioPage() {
 
                 {/* State 4: Generated */}
                 {stage === "generated" && (
-                  <div className="flex flex-col items-center justify-center gap-3 text-center px-4">
-                    <div className="grid h-12 w-12 place-items-center rounded-full bg-primary/20 text-primary">
-                      <Check className="h-6 w-6 stroke-[2.5]" />
-                    </div>
-                    <p className="text-[14px] font-semibold text-white">
-                      Your video is generated
-                    </p>
+                  <div className="absolute inset-0 h-full w-full">
+                    <FitVideo
+                      src={RESULT_VIDEO_SRC}
+                      playing={true}
+                      soundOn={isResultAudioOn}
+                      onAutoplayBlocked={() => setIsResultAudioOn(false)}
+                      loop={true}
+                    />
+                    {/* Top-right sound toggle button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsResultAudioOn((prev) => !prev);
+                      }}
+                      data-cursor="hover"
+                      title={isResultAudioOn ? "Mute sound" : "Unmute sound"}
+                      className="absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 backdrop-blur border border-white/20 text-white shadow-md transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      {isResultAudioOn ? (
+                        <Volume2 className="h-4 w-4" />
+                      ) : (
+                        <VolumeX className="h-4 w-4 text-white/70" />
+                      )}
+                    </button>
                   </div>
                 )}
               </div>
@@ -976,31 +1008,17 @@ function StudioPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
-                  className="mt-5 border-t border-border pt-5 text-center"
+                  className="mt-5 border-t border-border pt-4 text-center"
                 >
-                  <p className="text-[14px] font-medium text-foreground">
-                    Apply for access to get your video.
-                  </p>
-                  <div className="mt-4 flex flex-col gap-2.5">
-                    <button
-                      type="button"
-                      onClick={handleApplyAccess}
-                      data-cursor="hover"
-                      className="btn-glow-effect group inline-flex h-11 w-full items-center justify-center gap-2 rounded-full px-5 text-[13.5px] font-medium transition-all duration-300 hover:scale-[1.02]"
-                    >
-                      <span>Apply for Access</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleReset}
-                      data-cursor="hover"
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-muted-foreground transition-all duration-200 hover:bg-neutral-50 hover:text-foreground"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      <span>Try another template</span>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    data-cursor="hover"
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-muted-foreground transition-all duration-200 hover:bg-neutral-50 hover:text-foreground"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>Try another template</span>
+                  </button>
                 </motion.div>
               )}
             </div>
@@ -1020,6 +1038,8 @@ function FitVideo({
   loop = true,
   focus = "center",
   className = "",
+  preload = "metadata",
+  onAutoplayBlocked,
 }: {
   src: string;
   playing: boolean;
@@ -1027,6 +1047,8 @@ function FitVideo({
   loop?: boolean;
   focus?: string;
   className?: string;
+  preload?: "metadata" | "auto" | "none";
+  onAutoplayBlocked?: () => void;
 }) {
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
@@ -1040,13 +1062,18 @@ function FitVideo({
     if (playing) {
       const playPromise = main.play();
       if (playPromise !== undefined) {
-        playPromise.catch(() => {});
+        playPromise.catch(() => {
+          if (soundOn && onAutoplayBlocked) {
+            main.muted = true;
+            onAutoplayBlocked();
+            main.play().catch(() => {});
+          }
+        });
       }
     } else {
       main.pause();
-      main.currentTime = 0.1;
     }
-  }, [playing, soundOn, hasError]);
+  }, [playing, soundOn, hasError, onAutoplayBlocked]);
 
   if (hasError) {
     return (
@@ -1061,7 +1088,7 @@ function FitVideo({
     <video
       ref={mainVideoRef}
       src={`${src}#t=0.1`}
-      preload="metadata"
+      preload={preload}
       playsInline
       loop={loop}
       onError={() => setHasError(true)}
@@ -1091,10 +1118,12 @@ function TemplateCard({
   onSelect: () => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isPreloadAuto, setIsPreloadAuto] = useState(false);
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isDisabled) return;
+    setIsPreloadAuto(true);
     const rect = e.currentTarget.getBoundingClientRect();
     setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     setIsHovered(true);
@@ -1148,31 +1177,31 @@ function TemplateCard({
       {/* Outer Glow Element (outside the frame) */}
       <div
         aria-hidden="true"
-        className={`absolute -inset-2 -z-10 rounded-[inherit] blur-xl pointer-events-none transition-opacity duration-300 ${
+        className={`absolute -inset-1.5 -z-10 rounded-[inherit] blur-lg pointer-events-none transition-opacity duration-300 ease-out will-change-[transform,opacity] ${
           isDisabled
             ? "opacity-0"
             : isSelected
-              ? "opacity-70 animate-glow-pulse"
+              ? "opacity-[0.32] animate-glow-pulse"
               : isHovered
-                ? "opacity-55"
+                ? "opacity-25"
                 : "opacity-0"
         }`}
         style={{
           background:
             isHovered && !isSelected
-              ? "radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(109,94,248,0.9), rgba(139,124,255,0.35) 45%, transparent 70%)"
-              : "linear-gradient(to bottom right, #6D5EF8, #8B7CFF)",
+              ? "radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(169,156,255,0.55), rgba(139,124,255,0.2) 45%, transparent 70%)"
+              : "linear-gradient(to bottom right, rgba(169,156,255,0.8), rgba(139,124,255,0.8))",
         }}
       />
 
       {/* Inner Frame (contains video and overlays, clips corners) */}
       <div
-        className={`absolute inset-0 rounded-[inherit] overflow-hidden bg-neutral-200 border transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary ${
+        className={`absolute inset-0 rounded-[inherit] overflow-hidden bg-neutral-200 border transition-all duration-300 ease-out focus-visible:ring-2 focus-visible:ring-primary ${
           isSelected
-            ? "border-primary ring-2 ring-primary shadow-[0_0_24px_-4px_rgba(109,94,248,0.55)]"
+            ? "border-primary ring-2 ring-primary/70 shadow-[0_0_20px_-4px_rgba(169,156,255,0.4)]"
             : isDisabled
               ? "border-black/10"
-              : "border-black/10 hover:border-primary/50 hover:shadow-[0_12px_30px_-10px_rgba(109,94,248,0.35)]"
+              : "border-black/10 hover:border-primary/40 hover:shadow-[0_8px_24px_-8px_rgba(169,156,255,0.25)]"
         }`}
       >
         <FitVideo
@@ -1181,14 +1210,15 @@ function TemplateCard({
           soundOn={isAudioOn}
           loop={isSelected || isAudioOn}
           focus={focus}
+          preload={isPreloadAuto || isSelected ? "auto" : "metadata"}
         />
 
         {/* Subtle Bottom Gradient */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/45 to-transparent z-[1]" />
 
         {/* LOWER-LEFT: Template Name Pill */}
-        <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full bg-black/45 backdrop-blur px-3 py-1 text-[12.5px] font-semibold text-white shadow-sm">
-          {template.name}
+        <div className="pointer-events-none absolute bottom-2.5 left-2.5 z-10 flex h-7 max-w-[55%] items-center truncate rounded-full bg-black/45 backdrop-blur px-2.5 text-[11.5px] font-semibold text-white shadow-sm">
+          <span className="truncate">{template.name}</span>
         </div>
 
         {/* LOWER-RIGHT: Use this template / In use button */}
@@ -1200,7 +1230,7 @@ function TemplateCard({
             onSelect();
           }}
           data-cursor="hover"
-          className={`absolute bottom-3 right-3 z-10 flex h-8 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          className={`absolute bottom-2.5 right-2.5 z-10 flex h-7 min-w-[108px] items-center justify-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-semibold shadow-sm transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             isSelected
               ? "bg-primary text-white"
               : "bg-white/90 text-neutral-900 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1208,7 +1238,7 @@ function TemplateCard({
         >
           {isSelected ? (
             <>
-              <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+              <Check className="h-3 w-3 stroke-[2.5]" />
               <span>In use</span>
             </>
           ) : (
@@ -1225,12 +1255,12 @@ function TemplateCard({
           }}
           data-cursor="hover"
           title={isAudioOn ? "Mute audio" : "Unmute audio"}
-          className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 backdrop-blur border border-white/15 text-white shadow-sm transition-colors hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 backdrop-blur border border-white/15 text-white shadow-sm transition-colors duration-200 hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           {isAudioOn ? (
-            <Volume2 className="h-4 w-4" />
+            <Volume2 className="h-3.5 w-3.5" />
           ) : (
-            <VolumeX className="h-4 w-4 text-white/70" />
+            <VolumeX className="h-3.5 w-3.5 text-white/70" />
           )}
         </button>
       </div>
