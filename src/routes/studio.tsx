@@ -15,6 +15,10 @@ import {
   VolumeX,
   ChevronLeft,
   ChevronRight,
+  Play,
+  Pause,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import {
   useScrolled,
@@ -383,10 +387,10 @@ function StudioPage() {
 
   const previewShapeClass =
     selectedShape === "9:16"
-      ? "aspect-[9/16] w-full max-w-[260px] mx-auto"
+      ? "aspect-[9/16] w-full max-w-[340px] mx-auto"
       : selectedShape === "1:1"
-        ? "aspect-square w-full max-w-[320px] mx-auto"
-        : "aspect-video w-full mx-auto";
+        ? "aspect-square w-full max-w-[520px] mx-auto"
+        : "aspect-video w-full max-w-[860px] mx-auto";
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-background text-foreground">
@@ -577,456 +581,761 @@ function StudioPage() {
           </div>
         </div>
 
-        {/* Lower Two-Column Section: Left = Step 2 & 3, Right = Sticky Preview Panel */}
-        <div className="mt-10 grid grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_360px]">
-          {/* Left Column: Step 2 and Step 3 */}
-          <div className="min-w-0">
-            {/* STEP 2: Upload your photos */}
-            <div className="rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
-                    Step 2
-                  </span>
-                  <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-foreground">
-                    Upload your photos
-                  </h2>
-                </div>
-                <div className="flex items-center gap-3">
-                  {uploadedPhotos.length > 0 && !isLocked && (
-                    <button
-                      type="button"
-                      onClick={handleClearAll}
-                      data-cursor="hover"
-                      className="text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-red-500"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                  <span className="text-[12.5px] font-semibold text-muted-foreground">
-                    {uploadedPhotos.length} / {MAX_PHOTOS} photos
-                  </span>
-                </div>
+        {/* Lower Section: Step 2 & Step 3 Side-by-Side Row */}
+        <div className="mt-10 grid grid-cols-1 items-stretch gap-8 lg:grid-cols-2 lg:gap-10">
+          {/* STEP 2: Upload your photos */}
+          <div className="flex flex-col rounded-[24px] border border-border bg-white p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+                  Step 2
+                </span>
+                <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-foreground">
+                  Upload your photos
+                </h2>
               </div>
-
-              {/* Drop Zone */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (!isLocked) setIsDragOver(true);
-                }}
-                onDragLeave={() => setIsDragOver(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragOver(false);
-                  if (!isLocked && e.dataTransfer.files) {
-                    handleFiles(e.dataTransfer.files);
-                  }
-                }}
-                onClick={() => {
-                  if (!isLocked) fileInputRef.current?.click();
-                }}
-                data-cursor="hover"
-                className={`mt-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-all duration-200 ${
-                  isLocked
-                    ? "border-border/60 bg-neutral-50/50 opacity-60 cursor-not-allowed"
-                    : isDragOver
-                      ? "border-primary bg-primary/[0.04] scale-[0.99] cursor-pointer"
-                      : "border-border hover:border-primary/50 hover:bg-neutral-50/60 cursor-pointer"
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  disabled={isLocked}
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      handleFiles(e.target.files);
-                      e.target.value = "";
-                    }
-                  }}
-                  className="hidden"
-                />
-                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
-                  <Upload className="h-6 w-6" />
-                </div>
-                <p className="mt-3 text-[14px] font-semibold text-foreground">
-                  Drag and drop photos here, or click to browse
-                </p>
-                <p className="mt-1 text-[12.5px] text-muted-foreground">
-                  Up to 6 photos · JPG, PNG, WEBP
-                </p>
-              </div>
-
-              {uploadNotice && (
-                <p className="mt-2 text-[12.5px] font-medium text-amber-600">
-                  {uploadNotice}
-                </p>
-              )}
-
-              {/* Thumbnails reorder row */}
-              {uploadedPhotos.length > 0 && (
-                <Reorder.Group
-                  axis="x"
-                  values={uploadedPhotos}
-                  onReorder={isLocked ? () => {} : setUploadedPhotos}
-                  className="mt-4 flex gap-3 overflow-x-auto pb-2 pt-1 select-none"
-                >
-                  {uploadedPhotos.map((photo, index) => (
-                    <Reorder.Item
-                      key={photo.id}
-                      value={photo}
-                      dragListener={!isLocked}
-                      whileDrag={{ scale: 1.05, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.25)" }}
-                      className={`group relative h-28 w-28 shrink-0 overflow-hidden rounded-xl border border-border bg-neutral-100 shadow-sm sm:h-32 sm:w-32 ${
-                        isLocked ? "cursor-default" : "cursor-grab active:cursor-grabbing"
-                      }`}
-                    >
-                      <img
-                        src={photo.previewUrl}
-                        alt={`Upload ${index + 1}`}
-                        className="pointer-events-none h-full w-full object-cover"
-                      />
-                      {/* Order number badge */}
-                      <span className="pointer-events-none absolute top-1.5 left-1.5 grid h-5 w-5 place-items-center rounded-full bg-primary text-white text-[11px] font-bold shadow">
-                        {index + 1}
-                      </span>
-                      {/* Remove button */}
-                      {!isLocked && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemovePhoto(photo.id);
-                          }}
-                          data-cursor="hover"
-                          className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black transition-colors shadow z-10"
-                          title="Remove photo"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                      {/* Fallback shift buttons: visible on hover (desktop) or always visible on touch */}
-                      {!isLocked && (
-                        <div className="absolute inset-x-1 bottom-1.5 flex items-center justify-between pointer-events-none z-10">
-                          <button
-                            type="button"
-                            disabled={index === 0}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMovePhoto(index, -1);
-                            }}
-                            title="Move left"
-                            className="pointer-events-auto grid h-6 w-6 place-items-center rounded-md bg-black/70 text-white hover:bg-black transition-opacity disabled:opacity-30 disabled:pointer-events-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow"
-                          >
-                            <ChevronLeft className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={index === uploadedPhotos.length - 1}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMovePhoto(index, 1);
-                            }}
-                            title="Move right"
-                            className="pointer-events-auto grid h-6 w-6 place-items-center rounded-md bg-black/70 text-white hover:bg-black transition-opacity disabled:opacity-30 disabled:pointer-events-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow"
-                          >
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </Reorder.Item>
-                  ))}
-                </Reorder.Group>
-              )}
-            </div>
-
-            {/* STEP 3: Generate */}
-            <div className="mt-10 rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)] flex flex-col items-start text-left">
-              <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
-                Step 3
-              </span>
-              <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-foreground">
-                Generate
-              </h2>
-
-              <div className="mt-5 grid w-full grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-                {/* Quality Group */}
-                <div className="flex flex-col items-start w-full">
-                  <span className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Quality
-                  </span>
-                  <div className="mt-2.5 grid w-full grid-cols-3 gap-2">
-                    {QUALITIES.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        disabled={isLocked}
-                        onClick={() => setSelectedQuality(q)}
-                        data-cursor="hover"
-                        className={`h-11 rounded-xl border py-2 text-center text-[13px] font-medium transition-all ${
-                          selectedQuality === q
-                            ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
-                            : "border-border bg-white text-foreground hover:border-primary/30"
-                        } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Shape Group */}
-                <div className="flex flex-col items-start w-full">
-                  <span className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Shape
-                  </span>
-                  <div className="mt-2.5 grid w-full grid-cols-3 gap-2">
-                    {SHAPES.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        disabled={isLocked}
-                        onClick={() => setSelectedShape(s.id)}
-                        data-cursor="hover"
-                        className={`flex h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-center transition-all ${
-                          selectedShape === s.id
-                            ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
-                            : "border-border bg-white text-foreground hover:border-primary/30"
-                        } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                      >
-                        {s.id === "16:9" && (
-                          <span className="block h-3.5 w-6 rounded-[2px] border-2 border-current shrink-0" />
-                        )}
-                        {s.id === "9:16" && (
-                          <span className="block h-5 w-3.5 rounded-[2px] border-2 border-current shrink-0" />
-                        )}
-                        {s.id === "1:1" && (
-                          <span className="block h-4 w-4 rounded-[2px] border-2 border-current shrink-0" />
-                        )}
-                        <span className="text-[12px] font-semibold">{s.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Details Box */}
-              <div className="mt-6 w-full rounded-2xl border border-border bg-neutral-50/70 p-5 text-left">
-                <h4 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Details
-                </h4>
-                <div className="mt-3 divide-y divide-border/60 text-[13.5px]">
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-muted-foreground">Template</span>
-                    <span className="font-medium text-foreground">
-                      {selectedTemplate ? selectedTemplate.name : "Not selected yet"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-muted-foreground">Category</span>
-                    <span className="font-medium text-foreground">
-                      {selectedTemplate
-                        ? selectedTemplate.category === "cinematic"
-                          ? "Cinematic Walkthrough"
-                          : "Construction Walkthrough"
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-muted-foreground">Quality</span>
-                    <span className="font-medium text-foreground">{selectedQuality}</span>
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-muted-foreground">Shape</span>
-                    <span className="font-medium text-foreground">
-                      {selectedShape} (
-                      {SHAPES.find((s) => s.id === selectedShape)?.name})
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span className="font-medium text-foreground">{VIDEO_SECONDS} sec</span>
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-muted-foreground">Photos</span>
-                    <span className="font-medium text-foreground">
-                      {uploadedPhotos.length} / {MAX_PHOTOS}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Generate Button & helper text */}
-              <div className="mt-6 flex flex-wrap items-center gap-4">
-                <button
-                  type="button"
-                  disabled={!selectedTemplateId || uploadedPhotos.length === 0 || isLocked}
-                  onClick={handleGenerate}
-                  data-cursor="hover"
-                  className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-[14px] font-medium text-white shadow-md shadow-primary/25 transition-all duration-300 hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
-                >
-                  <Wand2 className="h-4 w-4" />
-                  <span>Generate Video</span>
-                </button>
-                <span className="text-[13.5px] text-muted-foreground font-medium">
-                  {!selectedTemplateId
-                    ? "Select a template to continue."
-                    : uploadedPhotos.length === 0
-                      ? "Add at least one photo to continue."
-                      : `${selectedTemplate?.name} · ${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? "" : "s"}`}
+              <div className="flex items-center gap-3">
+                {uploadedPhotos.length > 0 && !isLocked && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    data-cursor="hover"
+                    className="text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-red-500"
+                  >
+                    Clear all
+                  </button>
+                )}
+                <span className="text-[12.5px] font-semibold text-muted-foreground">
+                  {uploadedPhotos.length} / {MAX_PHOTOS} photos
                 </span>
               </div>
             </div>
+
+            {/* Drop Zone */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!isLocked) setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                if (!isLocked && e.dataTransfer.files) {
+                  handleFiles(e.dataTransfer.files);
+                }
+              }}
+              onClick={() => {
+                if (!isLocked) fileInputRef.current?.click();
+              }}
+              data-cursor="hover"
+              className={`mt-5 flex flex-1 min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-all duration-200 ${
+                isLocked
+                  ? "border-border/60 bg-neutral-50/50 opacity-60 cursor-not-allowed"
+                  : isDragOver
+                    ? "border-primary bg-primary/[0.04] scale-[0.99] cursor-pointer"
+                    : "border-border hover:border-primary/50 hover:bg-neutral-50/60 cursor-pointer"
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={isLocked}
+                onChange={(e) => {
+                  if (e.target.files) {
+                    handleFiles(e.target.files);
+                    e.target.value = "";
+                  }
+                }}
+                className="hidden"
+              />
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+                <Upload className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-[14px] font-semibold text-foreground">
+                Drag and drop photos here, or click to browse
+              </p>
+              <p className="mt-1 text-[12.5px] text-muted-foreground">
+                Up to 6 photos · JPG, PNG, WEBP
+              </p>
+            </div>
+
+            {uploadNotice && (
+              <p className="mt-2 text-[12.5px] font-medium text-amber-600">
+                {uploadNotice}
+              </p>
+            )}
+
+            {/* Thumbnails reorder row */}
+            {uploadedPhotos.length > 0 && (
+              <Reorder.Group
+                axis="x"
+                values={uploadedPhotos}
+                onReorder={isLocked ? () => {} : setUploadedPhotos}
+                className="mt-4 flex gap-3 overflow-x-auto pb-2 pt-1 select-none"
+              >
+                {uploadedPhotos.map((photo, index) => (
+                  <Reorder.Item
+                    key={photo.id}
+                    value={photo}
+                    dragListener={!isLocked}
+                    whileDrag={{ scale: 1.05, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.25)" }}
+                    className={`group relative h-28 w-28 shrink-0 overflow-hidden rounded-xl border border-border bg-neutral-100 shadow-sm sm:h-32 sm:w-32 ${
+                      isLocked ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+                    }`}
+                  >
+                    <img
+                      src={photo.previewUrl}
+                      alt={`Upload ${index + 1}`}
+                      className="pointer-events-none h-full w-full object-cover"
+                    />
+                    {/* Order number badge */}
+                    <span className="pointer-events-none absolute top-1.5 left-1.5 grid h-5 w-5 place-items-center rounded-full bg-primary text-white text-[11px] font-bold shadow">
+                      {index + 1}
+                    </span>
+                    {/* Remove button */}
+                    {!isLocked && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemovePhoto(photo.id);
+                        }}
+                        data-cursor="hover"
+                        className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black transition-colors shadow z-10"
+                        title="Remove photo"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                    {/* Fallback shift buttons */}
+                    {!isLocked && (
+                      <div className="absolute inset-x-1 bottom-1.5 flex items-center justify-between pointer-events-none z-10">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMovePhoto(index, -1);
+                          }}
+                          title="Move left"
+                          className="pointer-events-auto grid h-6 w-6 place-items-center rounded-md bg-black/70 text-white hover:bg-black transition-opacity disabled:opacity-30 disabled:pointer-events-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === uploadedPhotos.length - 1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMovePhoto(index, 1);
+                          }}
+                          title="Move right"
+                          className="pointer-events-auto grid h-6 w-6 place-items-center rounded-md bg-black/70 text-white hover:bg-black transition-opacity disabled:opacity-30 disabled:pointer-events-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
+            )}
           </div>
 
-          {/* Right Column: Sticky Preview Panel */}
-          <div ref={previewPanelRef} className="lg:sticky lg:top-24">
-            <div className="rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[17px] font-semibold tracking-tight text-foreground">
-                  Preview
-                </h2>
-              </div>
+          {/* STEP 3: Generate */}
+          <div className="flex flex-col items-start rounded-[24px] border border-border bg-white p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.03)] text-left">
+            <span className="text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
+              Step 3
+            </span>
+            <h2 className="mt-1 text-[22px] font-semibold tracking-tight text-foreground">
+              Generate
+            </h2>
 
-              {/* Preview Frame matching selected Shape */}
-              <div
-                className={`relative overflow-hidden rounded-[20px] bg-neutral-200 flex flex-col items-center justify-center shadow-inner transition-all duration-300 ${previewShapeClass}`}
-              >
-                {/* State 1: No template selected */}
-                {!selectedTemplate && stage === "idle" && (
-                  <div className="flex flex-col items-center justify-center gap-3 text-center px-4">
-                    <div className="grid h-12 w-12 place-items-center rounded-2xl bg-black/5 text-neutral-400">
-                      <Film className="h-6 w-6" />
-                    </div>
-                    <p className="text-[13px] text-neutral-500 font-medium">
-                      Select a template to preview
-                    </p>
-                  </div>
-                )}
-
-                {/* State 2: Template selected and idle */}
-                {selectedTemplate && stage === "idle" && (
-                  <AnimatePresence mode="sync">
-                    <motion.div
-                      key={selectedTemplate.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className="absolute inset-0 h-full w-full"
-                    >
-                      <FitVideo
-                        src={selectedTemplate.videoSrc}
-                        playing={true}
-                        soundOn={false}
-                        loop={true}
-                      />
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-medium text-white backdrop-blur whitespace-nowrap shadow-sm z-10 pointer-events-none">
-                        {selectedTemplate.name}
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
-                )}
-
-                {/* State 3: Generating */}
-                {stage === "generating" && (
-                  <div className="flex flex-col items-center justify-center p-6 text-center text-foreground w-full">
-                    {/* Spinning conic-gradient ring */}
-                    <div className="relative flex h-24 w-24 items-center justify-center">
-                      <div
-                        className="absolute inset-0 rounded-full animate-spin-slow"
-                        style={{
-                          background:
-                            "conic-gradient(from 0deg, #6D5EF8, #8B7CFF, transparent 60%)",
-                          padding: "3px",
-                          mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                          maskComposite: "exclude",
-                          WebkitMaskComposite: "destination-out",
-                        }}
-                      />
-                      <div className="absolute inset-2 animate-pulse rounded-full bg-[#6D5EF8]/10" />
-                      <span className="text-xl font-bold tracking-tight text-neutral-900">{progress}%</span>
-                    </div>
-
-                    {/* Progress track & dynamic status */}
-                    <div className="mt-6 w-full max-w-[200px] text-center">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-300">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary via-primary-soft to-[#8B7CFF] transition-all duration-100"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <p className="mt-3 min-h-[36px] flex items-center justify-center text-[12px] text-neutral-600 italic leading-snug">
-                        {STATUS_MESSAGES[statusStep]}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* State 4: Generated */}
-                {stage === "generated" && (
-                  <div className="absolute inset-0 h-full w-full">
-                    <FitVideo
-                      src={RESULT_VIDEO_SRC}
-                      playing={true}
-                      soundOn={isResultAudioOn}
-                      onAutoplayBlocked={() => setIsResultAudioOn(false)}
-                      loop={true}
-                    />
-                    {/* Top-right sound toggle button */}
+            <div className="mt-5 grid w-full grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+              {/* Quality Group */}
+              <div className="flex flex-col items-start w-full">
+                <span className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Quality
+                </span>
+                <div className="mt-2.5 grid w-full grid-cols-3 gap-2">
+                  {QUALITIES.map((q) => (
                     <button
+                      key={q}
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsResultAudioOn((prev) => !prev);
-                      }}
+                      disabled={isLocked}
+                      onClick={() => setSelectedQuality(q)}
                       data-cursor="hover"
-                      title={isResultAudioOn ? "Mute sound" : "Unmute sound"}
-                      className="absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 backdrop-blur border border-white/20 text-white shadow-md transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className={`h-11 rounded-xl border py-2 text-center text-[13px] font-medium transition-all ${
+                        selectedQuality === q
+                          ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
+                          : "border-border bg-white text-foreground hover:border-primary/30"
+                      } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                     >
-                      {isResultAudioOn ? (
-                        <Volume2 className="h-4 w-4" />
-                      ) : (
-                        <VolumeX className="h-4 w-4 text-white/70" />
-                      )}
+                      {q}
                     </button>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
 
-              {/* Output specification text label under preview */}
-              <p className="mt-3 text-center text-[12px] font-medium text-muted-foreground">
-                Output: {selectedShape} · {selectedQuality}
-              </p>
+              {/* Shape Group */}
+              <div className="flex flex-col items-start w-full">
+                <span className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Shape
+                </span>
+                <div className="mt-2.5 grid w-full grid-cols-3 gap-2">
+                  {SHAPES.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => setSelectedShape(s.id)}
+                      data-cursor="hover"
+                      className={`flex h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-center transition-all ${
+                        selectedShape === s.id
+                          ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
+                          : "border-border bg-white text-foreground hover:border-primary/30"
+                      } ${isLocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                    >
+                      {s.id === "16:9" && (
+                        <span className="block h-3.5 w-6 rounded-[2px] border-2 border-current shrink-0" />
+                      )}
+                      {s.id === "9:16" && (
+                        <span className="block h-5 w-3.5 rounded-[2px] border-2 border-current shrink-0" />
+                      )}
+                      {s.id === "1:1" && (
+                        <span className="block h-4 w-4 rounded-[2px] border-2 border-current shrink-0" />
+                      )}
+                      <span className="text-[12px] font-semibold">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-              {/* Actions revealed below frame when generated */}
-              {stage === "generated" && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className="mt-5 border-t border-border pt-4 text-center"
-                >
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    data-cursor="hover"
-                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border bg-white px-4 text-[13px] font-medium text-muted-foreground transition-all duration-200 hover:bg-neutral-50 hover:text-foreground"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    <span>Try another template</span>
-                  </button>
-                </motion.div>
-              )}
+            {/* Details Box */}
+            <div className="mt-6 w-full rounded-2xl border border-border bg-neutral-50/70 p-5 text-left">
+              <h4 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Details
+              </h4>
+              <div className="mt-3 divide-y divide-border/60 text-[13.5px]">
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-muted-foreground">Template</span>
+                  <span className="font-medium text-foreground">
+                    {selectedTemplate ? selectedTemplate.name : "Not selected yet"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-muted-foreground">Category</span>
+                  <span className="font-medium text-foreground">
+                    {selectedTemplate
+                      ? selectedTemplate.category === "cinematic"
+                        ? "Cinematic Walkthrough"
+                        : "Construction Walkthrough"
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-muted-foreground">Quality</span>
+                  <span className="font-medium text-foreground">{selectedQuality}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-muted-foreground">Shape</span>
+                  <span className="font-medium text-foreground">
+                    {selectedShape} (
+                    {SHAPES.find((s) => s.id === selectedShape)?.name})
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-muted-foreground">Duration</span>
+                  <span className="font-medium text-foreground">{VIDEO_SECONDS} sec</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-muted-foreground">Photos</span>
+                  <span className="font-medium text-foreground">
+                    {uploadedPhotos.length} / {MAX_PHOTOS}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Generate Button & helper text */}
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                disabled={!selectedTemplateId || uploadedPhotos.length === 0 || isLocked}
+                onClick={handleGenerate}
+                data-cursor="hover"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-[14px] font-medium text-white shadow-md shadow-primary/25 transition-all duration-300 hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                <Wand2 className="h-4 w-4" />
+                <span>Generate Video</span>
+              </button>
+              <span className="text-[13.5px] text-muted-foreground font-medium">
+                {!selectedTemplateId
+                  ? "Select a template to continue."
+                  : uploadedPhotos.length === 0
+                    ? "Add at least one photo to continue."
+                    : `${selectedTemplate?.name} · ${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? "" : "s"}`}
+              </span>
             </div>
           </div>
+        </div>
+
+        {/* Full-width Centered Preview Section Below */}
+        <div ref={previewPanelRef} className="mt-10 rounded-[24px] border border-border bg-white p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-[20px] font-semibold tracking-tight text-foreground">
+              Preview
+            </h2>
+          </div>
+
+          {/* Preview Frame matching selected Shape */}
+          <div
+            className={`relative overflow-hidden rounded-[20px] bg-neutral-200 flex flex-col items-center justify-center shadow-inner transition-all duration-300 ${previewShapeClass}`}
+          >
+            {/* State 1: No template selected */}
+            {!selectedTemplate && stage === "idle" && (
+              <div className="flex flex-col items-center justify-center gap-3 text-center px-4 py-20">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-black/5 text-neutral-400">
+                  <Film className="h-6 w-6" />
+                </div>
+                <p className="text-[13px] text-neutral-500 font-medium">
+                  Select a template to preview
+                </p>
+              </div>
+            )}
+
+            {/* State 2: Template selected and idle */}
+            {selectedTemplate && stage === "idle" && (
+              <AnimatePresence mode="sync">
+                <motion.div
+                  key={selectedTemplate.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="absolute inset-0 h-full w-full"
+                >
+                  <FitVideo
+                    src={selectedTemplate.videoSrc}
+                    playing={true}
+                    soundOn={false}
+                    loop={true}
+                  />
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-medium text-white backdrop-blur whitespace-nowrap shadow-sm z-10 pointer-events-none">
+                    {selectedTemplate.name}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            )}
+
+            {/* State 3: Generating */}
+            {stage === "generating" && (
+              <div className="flex flex-col items-center justify-center p-6 text-center text-foreground w-full">
+                {/* Spinning conic-gradient ring */}
+                <div className="relative flex h-24 w-24 items-center justify-center">
+                  <div
+                    className="absolute inset-0 rounded-full animate-spin-slow"
+                    style={{
+                      background:
+                        "conic-gradient(from 0deg, #6D5EF8, #8B7CFF, transparent 60%)",
+                      padding: "3px",
+                      mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                      maskComposite: "exclude",
+                      WebkitMaskComposite: "destination-out",
+                    }}
+                  />
+                  <div className="absolute inset-2 animate-pulse rounded-full bg-[#6D5EF8]/10" />
+                  <span className="text-xl font-bold tracking-tight text-neutral-900">{progress}%</span>
+                </div>
+
+                {/* Progress track & dynamic status */}
+                <div className="mt-6 w-full max-w-[200px] text-center">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-300">
+                    <div
+                      className="h-full bg-gradient-to-r from-primary via-primary-soft to-[#8B7CFF] transition-all duration-100"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <p className="mt-3 min-h-[36px] flex items-center justify-center text-[12px] text-neutral-600 italic leading-snug">
+                    {STATUS_MESSAGES[statusStep]}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* State 4: Generated Result with Custom VideoPlayer */}
+            {stage === "generated" && (
+              <VideoPlayer
+                src={RESULT_VIDEO_SRC}
+                onReset={handleReset}
+              />
+            )}
+          </div>
+
+          {/* Output specification text label under preview */}
+          <p className="mt-4 text-center text-[12.5px] font-medium text-muted-foreground">
+            Output: {selectedShape} · {selectedQuality}
+          </p>
+
+          {/* Reset button when generated */}
+          {stage === "generated" && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mt-6 border-t border-border pt-5 flex justify-center"
+            >
+              <button
+                type="button"
+                onClick={handleReset}
+                data-cursor="hover"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border bg-white px-5 text-[13px] font-medium text-muted-foreground transition-all duration-200 hover:bg-neutral-50 hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Try another template</span>
+              </button>
+            </motion.div>
+          )}
         </div>
       </main>
 
       <Footer />
+    </div>
+  );
+}
+
+function VideoPlayer({
+  src,
+  onReset,
+}: {
+  src: string;
+  onReset: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isEnded, setIsEnded] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-play on mount with sound fallback
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = !soundOn;
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(() => {
+          // If browser rejected unmuted autoplay, fall back to muted
+          video.muted = true;
+          setSoundOn(false);
+          video.play().catch(() => {});
+          setIsPlaying(true);
+        });
+    }
+  }, []);
+
+  // Sync soundOn
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !soundOn;
+  }, [soundOn]);
+
+  // Track Fullscreen state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  // Controls auto-hide timer (2.5 seconds inactivity while playing)
+  const resetControlsTimer = () => {
+    setShowControls(true);
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+    if (isPlaying && !isEnded) {
+      hideTimerRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 2500);
+    }
+  };
+
+  useEffect(() => {
+    if (!isPlaying || isEnded) {
+      setShowControls(true);
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    } else {
+      resetControlsTimer();
+    }
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [isPlaying, isEnded]);
+
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isEnded) {
+      video.currentTime = 0;
+      setIsEnded(false);
+      video.play().catch(() => {});
+      setIsPlaying(true);
+      return;
+    }
+
+    if (video.paused) {
+      video.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      video.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    setCurrentTime(video.currentTime);
+    if (video.duration && !isNaN(video.duration)) {
+      setDuration(video.duration);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.duration && !isNaN(video.duration)) {
+      setDuration(video.duration);
+    }
+  };
+
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
+    setIsEnded(true);
+    setShowControls(true);
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const time = parseFloat(e.target.value);
+    video.currentTime = time;
+    setCurrentTime(time);
+    if (isEnded) setIsEnded(false);
+  };
+
+  const toggleMute = () => {
+    setSoundOn((prev) => !prev);
+  };
+
+  const toggleFullscreen = () => {
+    const container = containerRef.current;
+    const video = videoRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      if (container.requestFullscreen) {
+        container.requestFullscreen().catch(() => {});
+      } else if ((video as unknown as { webkitEnterFullscreen?: () => void })?.webkitEnterFullscreen) {
+        (video as unknown as { webkitEnterFullscreen: () => void }).webkitEnterFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  // Keyboard accessibility
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === " " || e.key === "k") {
+      e.preventDefault();
+      togglePlay();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const video = videoRef.current;
+      if (video) {
+        video.currentTime = Math.max(0, video.currentTime - 5);
+        setCurrentTime(video.currentTime);
+      }
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const video = videoRef.current;
+      if (video) {
+        video.currentTime = Math.min(duration || 100, video.currentTime + 5);
+        setCurrentTime(video.currentTime);
+      }
+    } else if (e.key === "m" || e.key === "M") {
+      e.preventDefault();
+      toggleMute();
+    } else if (e.key === "f" || e.key === "F") {
+      e.preventDefault();
+      toggleFullscreen();
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      role="region"
+      aria-label="Result Video Player"
+      onKeyDown={handleKeyDown}
+      onMouseMove={resetControlsTimer}
+      onClick={togglePlay}
+      className="group relative h-full w-full overflow-hidden bg-black select-none focus:outline-none"
+    >
+      <video
+        ref={videoRef}
+        src={src}
+        playsInline
+        preload="auto"
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleVideoEnded}
+        className="h-full w-full object-cover"
+      />
+
+      {/* Center Action Overlay: Play when paused, or Replay when ended */}
+      {!isPlaying && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/30 backdrop-blur-[1px] transition-opacity duration-200">
+          {isEnded ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlay();
+              }}
+              data-cursor="hover"
+              aria-label="Replay video"
+              className="pointer-events-auto flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-white shadow-xl transition-all duration-200 hover:scale-105 active:scale-95"
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span>Replay</span>
+            </button>
+          ) : (
+            <div className="grid h-16 w-16 place-items-center rounded-full bg-black/60 backdrop-blur border border-white/20 text-white shadow-2xl transition-transform hover:scale-110">
+              <Play className="h-7 w-7 fill-white translate-x-0.5" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Overlaid Custom Controls Bar */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`absolute inset-x-0 bottom-0 z-30 flex flex-col justify-end bg-gradient-to-t from-black/85 via-black/45 to-transparent px-4 pb-3.5 pt-12 transition-opacity duration-300 ${
+          showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* Scrubber Progress Bar */}
+        <div className="relative mb-3 flex items-center group/scrubber">
+          <input
+            type="range"
+            min={0}
+            max={duration || 100}
+            step={0.1}
+            value={currentTime}
+            onChange={handleSeek}
+            aria-label="Seek progress"
+            className="w-full cursor-pointer appearance-none bg-transparent h-1.5 focus:outline-none"
+          />
+          {/* Custom Track Background */}
+          <div className="pointer-events-none absolute inset-x-0 h-1 rounded-full bg-white/25 overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-[width] duration-75"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Buttons Row */}
+        <div className="flex items-center justify-between text-white text-[12px] font-medium">
+          {/* Left Controls: Play/Pause, Sound, Time */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={togglePlay}
+              data-cursor="hover"
+              aria-label={isPlaying ? "Pause" : "Play"}
+              className="grid h-8 w-8 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {isPlaying ? (
+                <Pause className="h-4 w-4 fill-white" />
+              ) : (
+                <Play className="h-4 w-4 fill-white translate-x-0.5" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleMute}
+              data-cursor="hover"
+              aria-label={soundOn ? "Mute" : "Unmute"}
+              className="grid h-8 w-8 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {soundOn ? (
+                <Volume2 className="h-4 w-4" />
+              ) : (
+                <VolumeX className="h-4 w-4 text-white/70" />
+              )}
+            </button>
+
+            <span className="tabular-nums text-white/80 text-[11.5px] ml-1">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+          </div>
+
+          {/* Right Controls: Fullscreen */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              data-cursor="hover"
+              aria-label={isFullscreen ? "Exit Fullscreen" : "View in max size"}
+              title={isFullscreen ? "Exit Fullscreen" : "View in max size"}
+              className="grid h-8 w-8 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {isFullscreen ? (
+                <Minimize className="h-4 w-4" />
+              ) : (
+                <Maximize className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

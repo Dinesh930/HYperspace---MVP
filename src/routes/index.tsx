@@ -21,6 +21,8 @@ import {
   Check,
   X,
   ArrowRight,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
   useScrolled,
@@ -40,7 +42,7 @@ const COMPARISON_ROWS = [
     label: "Cost per listing",
     traditional: "$500-1,200",
     traditionalStrike: true,
-    hyperspace: "From $9/listing",
+    hyperspace: "Pay as you render",
   },
   {
     label: "Turnaround time",
@@ -177,12 +179,16 @@ function HeroCollageCard({
   config,
   isActive,
   isLocked,
+  isSoundOn,
+  onToggleSound,
   onClick,
   onVideoEnd,
 }: {
   config: HeroCardConfig;
   isActive: boolean;
   isLocked: boolean;
+  isSoundOn: boolean;
+  onToggleSound: () => void;
   onClick: () => void;
   onVideoEnd: () => void;
 }) {
@@ -192,6 +198,13 @@ function HeroCollageCard({
   const lastTimeRef = useRef<number>(0);
   const stallCountRef = useRef<number>(0);
 
+  // Sync muted property via ref
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !isSoundOn;
+  }, [isSoundOn]);
+
   // Control playback based on isActive & isLocked
   useEffect(() => {
     const video = videoRef.current;
@@ -200,6 +213,7 @@ function HeroCollageCard({
     if (isActive) {
       video.loop = isLocked;
       video.currentTime = 0;
+      video.muted = !isSoundOn;
       const playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => {});
@@ -209,7 +223,7 @@ function HeroCollageCard({
       video.pause();
       video.currentTime = 0;
     }
-  }, [isActive, isLocked, hasError]);
+  }, [isActive, isLocked, isSoundOn, hasError]);
 
   // Safety net watchdog: if video makes no progress for 5s while active (and not locked), skip to next
   useEffect(() => {
@@ -285,6 +299,25 @@ function HeroCollageCard({
         {config.label}
       </div>
 
+      {/* Sound Button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleSound();
+        }}
+        data-cursor="hover"
+        aria-label={isSoundOn ? "Turn sound off" : "Turn sound on"}
+        title={isSoundOn ? "Turn sound off" : "Turn sound on"}
+        className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 backdrop-blur border border-white/15 text-white shadow-sm transition-colors hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {isSoundOn ? (
+          <Volume2 className="h-4 w-4" />
+        ) : (
+          <VolumeX className="h-4 w-4 text-white/70" />
+        )}
+      </button>
+
       {hasError ? (
         <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-neutral-900 p-4 text-center">
           <Film className="h-8 w-8 text-neutral-600" />
@@ -294,7 +327,7 @@ function HeroCollageCard({
           ref={videoRef}
           src={config.videoSrc}
           preload="auto"
-          muted
+          muted={!isSoundOn}
           playsInline
           onEnded={handleEnded}
           onError={handleError}
@@ -318,6 +351,7 @@ function HeroCollageCard({
 function HeroCollage() {
   const [activeIdx, setActiveIdx] = useState<number>(0);
   const [locked, setLocked] = useState<boolean>(false);
+  const [soundId, setSoundId] = useState<"a" | "b" | "c" | null>(null);
 
   const handleCardClick = (index: number) => {
     if (activeIdx === index && locked) {
@@ -327,6 +361,17 @@ function HeroCollage() {
       // Lock on this card
       setActiveIdx(index);
       setLocked(true);
+    }
+  };
+
+  const handleToggleSound = (id: "a" | "b" | "c", index: number) => {
+    if (soundId === id) {
+      setSoundId(null);
+    } else {
+      setSoundId(id);
+      if (activeIdx !== index) {
+        setActiveIdx(index);
+      }
     }
   };
 
@@ -354,6 +399,8 @@ function HeroCollage() {
           config={config}
           isActive={activeIdx === index}
           isLocked={locked}
+          isSoundOn={soundId === config.id}
+          onToggleSound={() => handleToggleSound(config.id, index)}
           onClick={() => handleCardClick(index)}
           onVideoEnd={handleVideoEnd}
         />
@@ -801,7 +848,7 @@ function ComparisonSection() {
         </div>
 
         <div className="reveal relative mx-auto mt-12 w-full max-w-[900px] pt-3.5 pb-3.5 sm:mt-16">
-          {/* Highlight card: absolutely positioned panel BEHIND the table */}
+          {/* Highlight card: absolutely positioned panel BEHIND the table, bounds ONLY the table */}
           <div
             className="absolute right-0 top-0 bottom-0 w-[33%] z-0 rounded-[20px] bg-white border border-primary/20 shadow-[0_20px_60px_-30px_rgba(109,94,248,0.35)] pointer-events-none"
             aria-hidden="true"
@@ -862,21 +909,22 @@ function ComparisonSection() {
               ))}
             </tbody>
           </table>
+        </div>
 
-          <p className="mt-8 text-center text-[12px] text-muted-foreground sm:text-[13px]">
-            Based on average videographer rates of $500-1,200 per property video
-          </p>
+        {/* Footnote and Link moved outside wrapper in normal document flow */}
+        <p className="relative z-10 mt-10 text-center text-[12.5px] text-muted-foreground">
+          Based on average videographer rates of $500-1,200 per property video
+        </p>
 
-          <div className="mt-4 flex justify-center">
-            <Link
-              to="/studio"
-              data-cursor="hover"
-              className="inline-flex items-center gap-1.5 text-[14px] font-medium text-primary transition-opacity hover:opacity-80"
-            >
-              Try it on your next listing
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+        <div className="relative z-10 mt-4 flex justify-center">
+          <Link
+            to="/studio"
+            data-cursor="hover"
+            className="inline-flex items-center gap-1.5 text-[15px] font-medium text-primary transition-[text-shadow,opacity] duration-200 hover:opacity-80 active:[text-shadow:0_0_12px_rgba(109,94,248,0.55)] focus-visible:[text-shadow:0_0_12px_rgba(109,94,248,0.55)] focus-visible:outline-none"
+          >
+            Try it on your next listing
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </section>

@@ -337,9 +337,14 @@ export function Footer() {
       <div className="mx-auto flex w-full max-w-[1240px] flex-col items-center justify-between gap-4 px-6 text-[13.5px] text-muted-foreground sm:flex-row">
         <div className="flex items-center gap-2">
           <img src="/hyperspace-logo.png" alt="Hyper Space" className="h-5 w-auto object-contain" />
-          <BrandName className="font-medium" />
+          <span className="font-medium" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
+            <span style={{ color: "#000000" }}>Hyper</span>{" "}
+            <span className="relative inline-block bg-gradient-to-r from-primary via-primary-soft to-primary bg-clip-text text-transparent">
+              space
+            </span>
+          </span>
           <span className="hidden text-muted-foreground sm:inline">
-            · Turning Listing Photos Into Cinematic Videos
+            · Let’s hype your space.
           </span>
         </div>
         <div className="flex items-center gap-6">
