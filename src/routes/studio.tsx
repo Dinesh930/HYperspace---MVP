@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, Reorder } from "framer-motion";
 import {
   ArrowLeft,
   Wand2,
@@ -13,6 +13,8 @@ import {
   X,
   Volume2,
   VolumeX,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   useScrolled,
@@ -37,7 +39,30 @@ const ACCESS_FORM_ID = "7Rgxz6";
 const MAX_PHOTOS = 6;
 const GENERATION_MS = 8000;
 const VIDEO_SECONDS = 15;
-const VIDEO_FIT: "blur" | "cover" = "blur";
+const VIDEO_FIT: "blur" | "cover" = "cover";
+
+const TEMPLATE_FOCUS: Record<string, string> = {
+  "template-01": "center",
+  "template-02": "center",
+  "template-03": "center",
+  "template-04": "center",
+  "template-05": "center",
+  "template-06": "center",
+  "template-07": "center",
+  "template-08": "center",
+  "template-09": "center",
+  "template-10": "center",
+  "template-11": "center",
+  "template-12": "center",
+  "template-13": "center",
+  "template-14": "center",
+  "template-15": "center",
+  "template-16": "center",
+  "template-17": "center",
+  "template-18": "center",
+  "template-19": "center",
+  "template-20": "center",
+};
 
 // Slot assignments for the 4x5 construction magazine grid
 const SLOT_BY_TEMPLATE: Record<string, { slot: string; type: "portrait" | "landscape" }> = {
@@ -225,6 +250,66 @@ function StudioPage() {
     });
   };
 
+  const handleMovePhoto = (index: number, delta: number) => {
+    if (isLocked) return;
+    const targetIndex = index + delta;
+    if (targetIndex < 0 || targetIndex >= uploadedPhotos.length) return;
+    setUploadedPhotos((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      next.splice(targetIndex, 0, item);
+      return next;
+    });
+  };
+
+  const handleClearAll = () => {
+    if (isLocked) return;
+    uploadedPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setUploadedPhotos([]);
+    setUploadNotice(null);
+  };
+
+  // In development, log template video ratios, slot ratios, and percent cropped
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      const realRatios: Record<string, number> = {
+        "template-01": 1.7778, "template-02": 1.7778, "template-03": 1.7778,
+        "template-04": 1.7778, "template-05": 1.7778, "template-06": 1.7778,
+        "template-07": 0.5741, "template-08": 0.5741, "template-09": 0.5741,
+        "template-10": 1.7419, "template-11": 1.7419, "template-12": 1.7419,
+        "template-13": 0.5741, "template-14": 1.7419, "template-15": 1.7419,
+        "template-16": 1.7778, "template-17": 1.7772, "template-18": 1.7419,
+        "template-19": 1.7419, "template-20": 1.7419,
+      };
+
+      const rows = TEMPLATES.map((tpl) => {
+        const Rv = realRatios[tpl.id] || (tpl.orientation === "portrait" ? 0.5741 : 1.7778);
+        let slotRatio = 1.7778;
+        if (tpl.category === "cinematic") {
+          const num = parseInt(tpl.id.replace("template-", ""), 10);
+          slotRatio = (num === 1 || num === 4) ? 2.9 : (num === 2 || num === 3) ? 1.45 : 2.18;
+        } else {
+          const slot = SLOT_BY_TEMPLATE[tpl.id]?.slot;
+          if (slot?.startsWith("slot-p")) {
+            slotRatio = 0.7153;
+          } else if (slot === "slot-l1" || slot === "slot-l7") {
+            slotRatio = 3.0231;
+          } else {
+            slotRatio = 1.4782;
+          }
+        }
+        const crop = Rv > slotRatio ? (1 - slotRatio / Rv) * 100 : (1 - Rv / slotRatio) * 100;
+        return {
+          Template: tpl.id,
+          "Real Ratio": Number(Rv.toFixed(3)),
+          "Slot Ratio": Number(slotRatio.toFixed(3)),
+          "Crop %": `${crop.toFixed(1)}%`,
+        };
+      });
+      console.table(rows);
+    }
+  }, []);
+
   const handleGenerate = () => {
     if (!selectedTemplateId || uploadedPhotos.length === 0 || stage !== "idle") return;
 
@@ -301,7 +386,7 @@ function StudioPage() {
       <style>{`
 /* CINEMATIC WALKTHROUGH: asymmetric editorial, 6 columns (4+2, 2+4, 3+3) */
 .gallery-cinematic { display: grid; grid-template-columns: repeat(6, 1fr); gap: 21px; }
-.gallery-cinematic .tpl-card { position: relative; height: 270px; border-radius: 19px; overflow: hidden; }
+.gallery-cinematic .tpl-card { position: relative; height: 270px; border-radius: 19px; }
 .gallery-cinematic .tpl-card:nth-child(1) { grid-column: span 4; }
 .gallery-cinematic .tpl-card:nth-child(2) { grid-column: span 2; }
 .gallery-cinematic .tpl-card:nth-child(3) { grid-column: span 2; }
@@ -315,7 +400,7 @@ function StudioPage() {
 
 /* CONSTRUCTION WALKTHROUGH: editorial magazine, 4 columns x 5 rows */
 .gallery-construction { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 195px; gap: 13px; }
-.gallery-construction .tpl-card { position: relative; overflow: hidden; border-radius: 14px; }
+.gallery-construction .tpl-card { position: relative; border-radius: 14px; }
 .gallery-construction .slot-p1  { grid-column: 1 / span 1; grid-row: 1 / span 2; }
 .gallery-construction .slot-l1  { grid-column: 2 / span 2; grid-row: 1 / span 1; }
 .gallery-construction .slot-l2  { grid-column: 4 / span 1; grid-row: 1 / span 1; }
@@ -335,6 +420,19 @@ function StudioPage() {
   .gallery-construction .tpl-card { grid-column: auto !important; grid-row: auto !important; }
   .gallery-construction .tpl-card[data-type="landscape"] { grid-column: span 2 !important; aspect-ratio: 16 / 10; }
   .gallery-construction .tpl-card[data-type="portrait"] { grid-column: span 1 !important; aspect-ratio: 3 / 4; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.03); opacity: 0.85; }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-glow-pulse {
+    animation: none !important;
+  }
 }
       `}</style>
       <HalftoneBackground />
@@ -487,9 +585,21 @@ function StudioPage() {
                     Upload your photos
                   </h2>
                 </div>
-                <span className="text-[12.5px] font-semibold text-muted-foreground">
-                  {uploadedPhotos.length} / {MAX_PHOTOS} photos
-                </span>
+                <div className="flex items-center gap-3">
+                  {uploadedPhotos.length > 0 && !isLocked && (
+                    <button
+                      type="button"
+                      onClick={handleClearAll}
+                      data-cursor="hover"
+                      className="text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-red-500"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                  <span className="text-[12.5px] font-semibold text-muted-foreground">
+                    {uploadedPhotos.length} / {MAX_PHOTOS} photos
+                  </span>
+                </div>
               </div>
 
               {/* Drop Zone */}
@@ -549,21 +659,31 @@ function StudioPage() {
                 </p>
               )}
 
-              {/* Thumbnails grid */}
+              {/* Thumbnails reorder row */}
               {uploadedPhotos.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <Reorder.Group
+                  axis="x"
+                  values={uploadedPhotos}
+                  onReorder={isLocked ? () => {} : setUploadedPhotos}
+                  className="mt-4 flex gap-3 overflow-x-auto pb-2 pt-1 select-none"
+                >
                   {uploadedPhotos.map((photo, index) => (
-                    <div
+                    <Reorder.Item
                       key={photo.id}
-                      className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-neutral-100 shadow-sm"
+                      value={photo}
+                      dragListener={!isLocked}
+                      whileDrag={{ scale: 1.05, boxShadow: "0 20px 25px -5px rgba(0,0,0,0.25)" }}
+                      className={`group relative h-28 w-28 shrink-0 overflow-hidden rounded-xl border border-border bg-neutral-100 shadow-sm sm:h-32 sm:w-32 ${
+                        isLocked ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+                      }`}
                     >
                       <img
                         src={photo.previewUrl}
                         alt={`Upload ${index + 1}`}
-                        className="h-full w-full object-cover"
+                        className="pointer-events-none h-full w-full object-cover"
                       />
                       {/* Order number badge */}
-                      <span className="absolute top-1.5 left-1.5 grid h-5 w-5 place-items-center rounded-full bg-primary text-white text-[11px] font-bold shadow">
+                      <span className="pointer-events-none absolute top-1.5 left-1.5 grid h-5 w-5 place-items-center rounded-full bg-primary text-white text-[11px] font-bold shadow">
                         {index + 1}
                       </span>
                       {/* Remove button */}
@@ -575,15 +695,44 @@ function StudioPage() {
                             handleRemovePhoto(photo.id);
                           }}
                           data-cursor="hover"
-                          className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black transition-colors shadow"
+                          className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-black/70 text-white hover:bg-black transition-colors shadow z-10"
                           title="Remove photo"
                         >
                           <X className="h-3 w-3" />
                         </button>
                       )}
-                    </div>
+                      {/* Fallback shift buttons: visible on hover (desktop) or always visible on touch */}
+                      {!isLocked && (
+                        <div className="absolute inset-x-1 bottom-1.5 flex items-center justify-between pointer-events-none z-10">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMovePhoto(index, -1);
+                            }}
+                            title="Move left"
+                            className="pointer-events-auto grid h-6 w-6 place-items-center rounded-md bg-black/70 text-white hover:bg-black transition-opacity disabled:opacity-30 disabled:pointer-events-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow"
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === uploadedPhotos.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMovePhoto(index, 1);
+                            }}
+                            title="Move right"
+                            className="pointer-events-auto grid h-6 w-6 place-items-center rounded-md bg-black/70 text-white hover:bg-black transition-opacity disabled:opacity-30 disabled:pointer-events-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow"
+                          >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </Reorder.Item>
                   ))}
-                </div>
+                </Reorder.Group>
               )}
             </div>
 
@@ -869,21 +1018,21 @@ function FitVideo({
   playing,
   soundOn = false,
   loop = true,
+  focus = "center",
   className = "",
 }: {
   src: string;
   playing: boolean;
   soundOn?: boolean;
   loop?: boolean;
+  focus?: string;
   className?: string;
 }) {
   const mainVideoRef = useRef<HTMLVideoElement>(null);
-  const bgVideoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const main = mainVideoRef.current;
-    const bg = bgVideoRef.current;
     if (!main || hasError) return;
 
     main.muted = !soundOn;
@@ -891,32 +1040,13 @@ function FitVideo({
     if (playing) {
       const playPromise = main.play();
       if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            if (bg) {
-              bg.currentTime = main.currentTime;
-              bg.play().catch(() => {});
-            }
-          })
-          .catch(() => {});
+        playPromise.catch(() => {});
       }
     } else {
       main.pause();
       main.currentTime = 0.1;
-      if (bg) {
-        bg.pause();
-        bg.currentTime = 0.1;
-      }
     }
   }, [playing, soundOn, hasError]);
-
-  const handleTimeUpdate = () => {
-    const main = mainVideoRef.current;
-    const bg = bgVideoRef.current;
-    if (main && bg && Math.abs(main.currentTime - bg.currentTime) > 0.3) {
-      bg.currentTime = main.currentTime;
-    }
-  };
 
   if (hasError) {
     return (
@@ -927,46 +1057,17 @@ function FitVideo({
     );
   }
 
-  if (VIDEO_FIT === "cover") {
-    return (
-      <video
-        ref={mainVideoRef}
-        src={`${src}#t=0.1`}
-        preload="metadata"
-        playsInline
-        loop={loop}
-        onError={() => setHasError(true)}
-        className={`block h-full w-full object-cover ${className}`}
-      />
-    );
-  }
-
   return (
-    <div className={`relative h-full w-full overflow-hidden ${className}`}>
-      {/* Layer 1: Blurred background fill */}
-      <video
-        ref={bgVideoRef}
-        src={`${src}#t=0.1`}
-        preload="metadata"
-        muted
-        playsInline
-        aria-hidden
-        loop={loop}
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover scale-125 blur-2xl opacity-80"
-      />
-
-      {/* Layer 2: Main video */}
-      <video
-        ref={mainVideoRef}
-        src={`${src}#t=0.1`}
-        preload="metadata"
-        playsInline
-        loop={loop}
-        onTimeUpdate={handleTimeUpdate}
-        onError={() => setHasError(true)}
-        className="pointer-events-none absolute inset-0 h-full w-full object-contain"
-      />
-    </div>
+    <video
+      ref={mainVideoRef}
+      src={`${src}#t=0.1`}
+      preload="metadata"
+      playsInline
+      loop={loop}
+      onError={() => setHasError(true)}
+      className={`absolute inset-0 h-full w-full object-cover pointer-events-none ${className}`}
+      style={{ objectPosition: focus }}
+    />
   );
 }
 
@@ -990,10 +1091,19 @@ function TemplateCard({
   onSelect: () => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isDisabled) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     setIsHovered(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDisabled) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
   const handleMouseLeave = () => {
@@ -1001,6 +1111,7 @@ function TemplateCard({
   };
 
   const isPlaying = isSelected || isAudioOn || (isHovered && !isDisabled);
+  const focus = TEMPLATE_FOCUS[template.id] || "center";
 
   return (
     <div
@@ -1021,73 +1132,108 @@ function TemplateCard({
         }
       }}
       onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       data-cursor="hover"
-      className={`tpl-card group relative bg-neutral-200 border border-black/10 overflow-hidden isolate transform-gpu transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary select-none cursor-pointer ${slotClass} ${
-        isSelected
-          ? "border-primary ring-2 ring-primary shadow-[0_0_24px_-4px_rgba(109,94,248,0.55)]"
-          : isDisabled
-            ? ""
-            : "hover:-translate-y-1 hover:border-primary/50 hover:shadow-[0_12px_30px_-10px_rgba(109,94,248,0.35)]"
+      style={
+        {
+          "--mx": `${mousePos.x}px`,
+          "--my": `${mousePos.y}px`,
+        } as React.CSSProperties
+      }
+      className={`tpl-card group relative isolate cursor-pointer rounded-[inherit] select-none focus-visible:outline-none ${slotClass} ${
+        isHovered && !isDisabled ? "z-10" : "z-0"
       }`}
     >
-      <FitVideo
-        src={template.videoSrc}
-        playing={isPlaying}
-        soundOn={isAudioOn}
-        loop={isSelected || isAudioOn}
+      {/* Outer Glow Element (outside the frame) */}
+      <div
+        aria-hidden="true"
+        className={`absolute -inset-2 -z-10 rounded-[inherit] blur-xl pointer-events-none transition-opacity duration-300 ${
+          isDisabled
+            ? "opacity-0"
+            : isSelected
+              ? "opacity-70 animate-glow-pulse"
+              : isHovered
+                ? "opacity-55"
+                : "opacity-0"
+        }`}
+        style={{
+          background:
+            isHovered && !isSelected
+              ? "radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(109,94,248,0.9), rgba(139,124,255,0.35) 45%, transparent 70%)"
+              : "linear-gradient(to bottom right, #6D5EF8, #8B7CFF)",
+        }}
       />
 
-      {/* Subtle Bottom Gradient */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/45 to-transparent z-[1]" />
-
-      {/* LOWER-LEFT: Template Name Pill */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full bg-black/45 backdrop-blur px-3 py-1 text-[12.5px] font-semibold text-white shadow-sm">
-        {template.name}
-      </div>
-
-      {/* LOWER-RIGHT: Use this template / In use button */}
-      <button
-        type="button"
-        disabled={isDisabled}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect();
-        }}
-        data-cursor="hover"
-        className={`absolute bottom-3 right-3 z-10 flex h-8 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+      {/* Inner Frame (contains video and overlays, clips corners) */}
+      <div
+        className={`absolute inset-0 rounded-[inherit] overflow-hidden bg-neutral-200 border transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary ${
           isSelected
-            ? "bg-primary text-white"
-            : "bg-white/90 text-neutral-900 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+            ? "border-primary ring-2 ring-primary shadow-[0_0_24px_-4px_rgba(109,94,248,0.55)]"
+            : isDisabled
+              ? "border-black/10"
+              : "border-black/10 hover:border-primary/50 hover:shadow-[0_12px_30px_-10px_rgba(109,94,248,0.35)]"
         }`}
       >
-        {isSelected ? (
-          <>
-            <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>In use</span>
-          </>
-        ) : (
-          <span>Use this template</span>
-        )}
-      </button>
+        <FitVideo
+          src={template.videoSrc}
+          playing={isPlaying}
+          soundOn={isAudioOn}
+          loop={isSelected || isAudioOn}
+          focus={focus}
+        />
 
-      {/* TOP-RIGHT: Audio Toggle Button */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleAudio();
-        }}
-        data-cursor="hover"
-        title={isAudioOn ? "Mute audio" : "Unmute audio"}
-        className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 backdrop-blur border border-white/15 text-white shadow-sm transition-colors hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        {isAudioOn ? (
-          <Volume2 className="h-4 w-4" />
-        ) : (
-          <VolumeX className="h-4 w-4 text-white/70" />
-        )}
-      </button>
+        {/* Subtle Bottom Gradient */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/45 to-transparent z-[1]" />
+
+        {/* LOWER-LEFT: Template Name Pill */}
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10 rounded-full bg-black/45 backdrop-blur px-3 py-1 text-[12.5px] font-semibold text-white shadow-sm">
+          {template.name}
+        </div>
+
+        {/* LOWER-RIGHT: Use this template / In use button */}
+        <button
+          type="button"
+          disabled={isDisabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+          data-cursor="hover"
+          className={`absolute bottom-3 right-3 z-10 flex h-8 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+            isSelected
+              ? "bg-primary text-white"
+              : "bg-white/90 text-neutral-900 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+          }`}
+        >
+          {isSelected ? (
+            <>
+              <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+              <span>In use</span>
+            </>
+          ) : (
+            <span>Use this template</span>
+          )}
+        </button>
+
+        {/* TOP-RIGHT: Audio Toggle Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleAudio();
+          }}
+          data-cursor="hover"
+          title={isAudioOn ? "Mute audio" : "Unmute audio"}
+          className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 backdrop-blur border border-white/15 text-white shadow-sm transition-colors hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {isAudioOn ? (
+            <Volume2 className="h-4 w-4" />
+          ) : (
+            <VolumeX className="h-4 w-4 text-white/70" />
+          )}
+        </button>
+      </div>
     </div>
   );
 }

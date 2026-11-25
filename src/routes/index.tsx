@@ -81,6 +81,12 @@ const HERO_VIDEOS = {
   c: `${VIDEO_BASE_URL}/template-02.mp4`,
 };
 
+const HERO_FOCUS: Record<"a" | "b" | "c", string> = {
+  a: "center",
+  b: "center",
+  c: "center",
+};
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [{ property: "og:image", content: "https://cinora.ai/og.jpg" }],
@@ -180,54 +186,64 @@ function HeroCollageCard({
   onClick: () => void;
   onVideoEnd: () => void;
 }) {
-  const mainVideoRef = useRef<HTMLVideoElement>(null);
-  const bgVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
   const shouldReduceMotion = useReducedMotion();
+  const lastTimeRef = useRef<number>(0);
+  const stallCountRef = useRef<number>(0);
 
   // Control playback based on isActive & isLocked
   useEffect(() => {
-    const main = mainVideoRef.current;
-    const bg = bgVideoRef.current;
-    if (!main || hasError) return;
+    const video = videoRef.current;
+    if (!video || hasError) return;
 
     if (isActive) {
-      main.loop = isLocked;
-      if (bg) bg.loop = isLocked;
-
-      const playPromise = main.play();
+      video.loop = isLocked;
+      video.currentTime = 0;
+      const playPromise = video.play();
       if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            if (bg) {
-              bg.currentTime = main.currentTime;
-              bg.play().catch(() => {});
-            }
-          })
-          .catch(() => {});
+        playPromise.catch(() => {});
       }
     } else {
-      main.loop = false;
-      main.pause();
-      main.currentTime = 0.1;
-      if (bg) {
-        bg.loop = false;
-        bg.pause();
-        bg.currentTime = 0.1;
-      }
+      video.loop = false;
+      video.pause();
+      video.currentTime = 0;
     }
   }, [isActive, isLocked, hasError]);
 
-  // Sync background video time occasionally
-  const handleTimeUpdate = () => {
-    const main = mainVideoRef.current;
-    const bg = bgVideoRef.current;
-    if (main && bg && Math.abs(main.currentTime - bg.currentTime) > 0.3) {
-      bg.currentTime = main.currentTime;
+  // Safety net watchdog: if video makes no progress for 5s while active (and not locked), skip to next
+  useEffect(() => {
+    if (!isActive || isLocked || hasError) return;
+
+    stallCountRef.current = 0;
+    lastTimeRef.current = videoRef.current?.currentTime || 0;
+
+    const interval = setInterval(() => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      if (video.currentTime === lastTimeRef.current && !video.paused) {
+        stallCountRef.current += 1;
+        if (stallCountRef.current >= 5) {
+          onVideoEnd();
+        }
+      } else {
+        stallCountRef.current = 0;
+        lastTimeRef.current = video.currentTime;
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isActive, isLocked, hasError, onVideoEnd]);
+
+  const handleEnded = () => {
+    if (!isLocked) {
+      onVideoEnd();
     }
   };
 
-  const handleEnded = () => {
+  const handleError = () => {
+    setHasError(true);
     if (!isLocked) {
       onVideoEnd();
     }
@@ -274,31 +290,17 @@ function HeroCollageCard({
           <Film className="h-8 w-8 text-neutral-600" />
         </div>
       ) : (
-        <>
-          {/* Layer 1: Blurred background fill */}
-          <video
-            ref={bgVideoRef}
-            src={`${config.videoSrc}#t=0.1`}
-            preload="auto"
-            muted
-            playsInline
-            aria-hidden
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover scale-125 blur-2xl opacity-70"
-          />
-
-          {/* Layer 2: Main crisp video on top */}
-          <video
-            ref={mainVideoRef}
-            src={`${config.videoSrc}#t=0.1`}
-            preload="auto"
-            muted
-            playsInline
-            onTimeUpdate={handleTimeUpdate}
-            onEnded={handleEnded}
-            onError={() => setHasError(true)}
-            className="pointer-events-none absolute inset-0 h-full w-full object-contain"
-          />
-        </>
+        <video
+          ref={videoRef}
+          src={config.videoSrc}
+          preload="auto"
+          muted
+          playsInline
+          onEnded={handleEnded}
+          onError={handleError}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          style={{ objectPosition: HERO_FOCUS[config.id] || "center" }}
+        />
       )}
 
       {/* Dim overlay and play icon when inactive */}
@@ -316,24 +318,6 @@ function HeroCollageCard({
 function HeroCollage() {
   const [activeIdx, setActiveIdx] = useState<number>(0);
   const [locked, setLocked] = useState<boolean>(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Auto sequence when not locked
-  useEffect(() => {
-    if (locked) {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      return;
-    }
-
-    // Set 6-second max duration per card
-    timerRef.current = setTimeout(() => {
-      setActiveIdx((prev) => (prev + 1) % 3);
-    }, 6000);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [activeIdx, locked]);
 
   const handleCardClick = (index: number) => {
     if (activeIdx === index && locked) {
@@ -348,7 +332,6 @@ function HeroCollage() {
 
   const handleVideoEnd = () => {
     if (!locked) {
-      if (timerRef.current) clearTimeout(timerRef.current);
       setActiveIdx((prev) => (prev + 1) % 3);
     }
   };
@@ -817,56 +800,68 @@ function ComparisonSection() {
           </h2>
         </div>
 
-        <div className="reveal relative mx-auto mt-12 w-full max-w-[900px] sm:mt-16">
+        <div className="reveal relative mx-auto mt-12 w-full max-w-[900px] pt-3.5 pb-3.5 sm:mt-16">
+          {/* Highlight card: absolutely positioned panel BEHIND the table */}
           <div
-            className="relative grid grid-cols-[1.25fr_1fr_1.1fr] items-center text-[12px] sm:grid-cols-[1.3fr_1fr_1.1fr] sm:text-[14.5px]"
-            style={{ gridTemplateRows: "repeat(8, auto)" }}
-          >
-            {/* Raised highlight card spanning third column */}
-            <div
-              style={{ gridColumn: "3 / 4", gridRow: "1 / -1" }}
-              className="pointer-events-none -my-3 rounded-[20px] border border-primary/20 bg-white shadow-[0_20px_60px_-30px_rgba(109,94,248,0.35)] z-0"
-              aria-hidden="true"
-            />
+            className="absolute right-0 top-0 bottom-0 w-[33%] z-0 rounded-[20px] bg-white border border-primary/20 shadow-[0_20px_60px_-30px_rgba(109,94,248,0.35)] pointer-events-none"
+            aria-hidden="true"
+          />
 
-            {/* Table Header */}
-            <div className="px-2 py-3 sm:px-4 sm:py-4" />
-            <div className="break-words px-2 py-3 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:px-4 sm:py-4 sm:text-[12px]">
-              Traditional videographer
-            </div>
-            <div className="relative z-[1] break-words px-2 py-3 text-center text-[15px] font-semibold text-foreground sm:px-4 sm:py-4 sm:text-[18px]">
-              HyperSpace
-            </div>
-
-            {/* Rows */}
-            {COMPARISON_ROWS.map((row) => (
-              <Fragment key={row.label}>
-                <div className="break-words border-t border-border px-2 py-3.5 text-left font-normal text-muted-foreground sm:px-4 sm:py-4">
-                  {row.label}
-                </div>
-                <div className="flex break-words items-center justify-center border-t border-border px-2 py-3.5 text-center text-muted-foreground sm:px-4 sm:py-4">
-                  {row.traditional === "check" ? (
-                    <Check className="h-4 w-4 stroke-[2.5] text-muted-foreground" />
-                  ) : row.traditional === "x" ? (
-                    <X className="h-4 w-4 stroke-[2.5] text-muted-foreground" />
-                  ) : row.traditionalStrike ? (
-                    <span className="line-through opacity-75">{row.traditional}</span>
-                  ) : (
-                    row.traditional
-                  )}
-                </div>
-                <div className="relative z-[1] flex break-words items-center justify-center border-t border-border/50 px-2 py-3.5 text-center font-medium text-foreground sm:px-4 sm:py-4">
-                  {row.hyperspace === "check" ? (
-                    <Check className="h-4 w-4 stroke-[2.5] text-primary" />
-                  ) : row.hyperspace === "x" ? (
-                    <X className="h-4 w-4 stroke-[2.5] text-muted-foreground" />
-                  ) : (
-                    row.hyperspace
-                  )}
-                </div>
-              </Fragment>
-            ))}
-          </div>
+          <table className="relative z-10 w-full table-fixed border-separate border-spacing-0">
+            <colgroup>
+              <col className="w-[38%]" />
+              <col className="w-[29%]" />
+              <col className="w-[33%]" />
+            </colgroup>
+            <thead>
+              <tr className="h-[64px]">
+                <th className="bg-transparent" />
+                <th className="bg-transparent px-2 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:px-4">
+                  Traditional videographer
+                </th>
+                <th className="bg-transparent px-2 text-center text-[18px] font-semibold text-foreground sm:px-4 sm:text-[20px]">
+                  HyperSpace
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON_ROWS.map((row) => (
+                <tr key={row.label} className="h-[56px] md:h-[60px]">
+                  <td className="border-t border-border bg-transparent pl-2 pr-2 text-left align-middle text-[11.5px] text-muted-foreground sm:pl-4 sm:text-[13px] break-words">
+                    {row.label}
+                  </td>
+                  <td className="border-t border-border bg-transparent px-2 text-center align-middle text-[11.5px] text-muted-foreground sm:text-[13px] break-words">
+                    {row.traditional === "check" ? (
+                      <div className="flex items-center justify-center">
+                        <Check className="h-4 w-4 stroke-[2.5] text-muted-foreground" />
+                      </div>
+                    ) : row.traditional === "x" ? (
+                      <div className="flex items-center justify-center">
+                        <X className="h-4 w-4 stroke-[2.5] text-muted-foreground" />
+                      </div>
+                    ) : row.traditionalStrike ? (
+                      <span className="line-through opacity-75">{row.traditional}</span>
+                    ) : (
+                      row.traditional
+                    )}
+                  </td>
+                  <td className="border-t border-border bg-transparent px-2 text-center align-middle text-[13px] font-medium text-foreground sm:text-[15px] md:text-[17px] break-words">
+                    {row.hyperspace === "check" ? (
+                      <div className="flex items-center justify-center">
+                        <Check className="h-4 w-4 stroke-[2.5] text-primary" />
+                      </div>
+                    ) : row.hyperspace === "x" ? (
+                      <div className="flex items-center justify-center">
+                        <X className="h-4 w-4 stroke-[2.5] text-muted-foreground" />
+                      </div>
+                    ) : (
+                      row.hyperspace
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
           <p className="mt-8 text-center text-[12px] text-muted-foreground sm:text-[13px]">
             Based on average videographer rates of $500-1,200 per property video
