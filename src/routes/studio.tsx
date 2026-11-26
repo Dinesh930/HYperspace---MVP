@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   ArrowLeft,
@@ -123,16 +123,27 @@ function StudioPage() {
   const scrolled = useScrolled();
   useRevealOnScroll();
   const search = Route.useSearch();
+  const navigate = useNavigate();
 
-  // Instant scroll to top before paint on navigation
-  useEffect(() => {
-    const prevBehavior = document.documentElement.style.scrollBehavior;
-    document.documentElement.style.scrollBehavior = "auto";
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-    document.documentElement.style.scrollBehavior = prevBehavior;
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    () => (search.template && TEMPLATES.some((t) => t.id === search.template) ? search.template : null),
+  );
+
+  const step2Ref = useRef<HTMLDivElement>(null);
+
+  // Position at Step 2 before first paint if template was specified in search; otherwise instant scroll to top
+  useLayoutEffect(() => {
+    if (search.template && TEMPLATES.some((t) => t.id === search.template)) {
+      step2Ref.current?.scrollIntoView({ behavior: "auto", block: "start" });
+      navigate({ to: "/studio", search: {}, replace: true });
+    } else {
+      const prevBehavior = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.style.scrollBehavior = prevBehavior;
+    }
   }, []);
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedQuality, setSelectedQuality] = useState<string>("1080p");
   const [selectedShape, setSelectedShape] = useState<string>("16:9");
@@ -149,7 +160,6 @@ function StudioPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const previewPanelRef = useRef<HTMLDivElement>(null);
-  const step2Ref = useRef<HTMLDivElement>(null);
   const photosRef = useRef<UploadedPhoto[]>([]);
   photosRef.current = uploadedPhotos;
 
@@ -166,30 +176,15 @@ function StudioPage() {
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    setTimeout(() => {
-      step2Ref.current?.scrollIntoView({
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-        block: "start",
-      });
-    }, 80);
-  };
-
-  // Auto-select template from search param and scroll to Step 2
-  useEffect(() => {
-    if (search.template && TEMPLATES.some((t) => t.id === search.template)) {
-      setSelectedTemplateId(search.template);
-      const timer = setTimeout(() => {
-        const prefersReducedMotion =
-          typeof window !== "undefined" &&
-          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
         step2Ref.current?.scrollIntoView({
           behavior: prefersReducedMotion ? "auto" : "smooth",
           block: "start",
         });
-      }, 350);
-      return () => clearTimeout(timer);
-    }
-  }, [search.template]);
+      });
+    });
+  };
 
   // Template grouping
   const cinematicTemplates = TEMPLATES.filter((t) => t.category === "cinematic");
@@ -391,7 +386,7 @@ function StudioPage() {
         : "aspect-video w-full max-w-[860px] mx-auto";
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-background text-foreground">
+    <div className="page-enter relative min-h-screen overflow-x-clip bg-background text-foreground">
       <style>{`
 /* CINEMATIC WALKTHROUGH: asymmetric editorial, 6 columns (4+2, 2+4, 3+3) */
 .gallery-cinematic { display: grid; grid-template-columns: repeat(6, 1fr); gap: 21px; }
@@ -588,7 +583,7 @@ function StudioPage() {
           {/* STEP 2: Upload your photos */}
           <div
             ref={step2Ref}
-            className="scroll-mt-24 flex flex-col rounded-[24px] border border-border bg-white p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+            className="scroll-mt-24 min-h-[300px] flex flex-col rounded-[24px] border border-border bg-white p-6 md:p-8 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -873,7 +868,7 @@ function StudioPage() {
                 {!selectedTemplateId
                   ? "Select a template to continue."
                   : uploadedPhotos.length === 0
-                    ? "Add at least one photo to continue."
+                    ? ""
                     : `${selectedTemplate?.name} · ${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? "" : "s"}`}
               </span>
             </div>
@@ -1356,6 +1351,7 @@ function FitVideo({
   preload?: "metadata" | "auto" | "none";
 }) {
   const [hasError, setHasError] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   if (hasError) {
     return (
@@ -1374,8 +1370,9 @@ function FitVideo({
       playsInline
       loop={loop}
       muted={!soundOn}
+      onLoadedData={() => setLoaded(true)}
       onError={() => setHasError(true)}
-      className={`absolute inset-0 h-full w-full object-cover pointer-events-none ${className}`}
+      className={`absolute inset-0 h-full w-full object-cover pointer-events-none transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"} ${className}`}
       style={{ objectPosition: focus }}
     />
   );
@@ -1483,17 +1480,32 @@ function TemplateCard({
           preload={isHovered || isSelected ? "auto" : "metadata"}
         />
 
+        {/* TOP-RIGHT: Audio Toggle Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleAudio();
+          }}
+          data-cursor="hover"
+          title={isAudioOn ? "Mute audio" : "Unmute audio"}
+          className="card-audio-btn hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {isAudioOn ? (
+            <Volume2 className="h-3.5 w-3.5" />
+          ) : (
+            <VolumeX className="h-3.5 w-3.5 text-white/70" />
+          )}
+        </button>
+
         {/* Subtle Bottom Gradient */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/45 to-transparent z-[1]" />
 
         {/* BOTTOM ROW: Name Pill & Use this template button in ONE flex row */}
-        <div className="absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2 sm:inset-x-2.5 sm:bottom-2.5">
-          <div
-            className={`min-w-0 truncate max-w-[55%] h-6 sm:h-7 px-2 sm:px-2.5 text-[10.5px] sm:text-[11.5px] font-semibold text-white bg-black/45 backdrop-blur rounded-full items-center shadow-sm pointer-events-none ${
-              dataType === "portrait" ? "hidden sm:flex" : "flex"
-            }`}
-          >
-            <span className="truncate">{template.name}</span>
+        <div className="card-bottom-row">
+          <div className="card-pill">
+            <span className="pill-full-name truncate">{template.name}</span>
+            <span className="pill-short-name">{template.id.replace("template-", "")}</span>
           </div>
 
           <button
@@ -1504,7 +1516,7 @@ function TemplateCard({
               onSelect();
             }}
             data-cursor="hover"
-            className={`shrink-0 whitespace-nowrap h-6 px-2.5 text-[10.5px] sm:h-7 sm:px-3 sm:text-[11.5px] gap-1 rounded-full font-semibold shadow-sm transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary inline-flex items-center justify-center ${
+            className={`card-use-btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               isSelected
                 ? "bg-primary text-white"
                 : "bg-white/90 text-neutral-900 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1515,34 +1527,14 @@ function TemplateCard({
                 <Check className="h-3 w-3 stroke-[2.5]" />
                 <span>In use</span>
               </>
-            ) : dataType === "portrait" ? (
-              <>
-                <span className="sm:hidden">Use</span>
-                <span className="hidden sm:inline">Use this template</span>
-              </>
             ) : (
-              <span>Use this template</span>
+              <>
+                <span className="btn-full-label">Use this template</span>
+                <span className="btn-short-label">Use</span>
+              </>
             )}
           </button>
         </div>
-
-        {/* TOP-RIGHT: Audio Toggle Button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleAudio();
-          }}
-          data-cursor="hover"
-          title={isAudioOn ? "Mute audio" : "Unmute audio"}
-          className="absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 backdrop-blur border border-white/15 text-white shadow-sm transition-colors duration-200 hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        >
-          {isAudioOn ? (
-            <Volume2 className="h-3.5 w-3.5" />
-          ) : (
-            <VolumeX className="h-3.5 w-3.5 text-white/70" />
-          )}
-        </button>
       </div>
     </div>
   );

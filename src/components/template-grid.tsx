@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { Volume2, VolumeX } from "lucide-react";
 import { ALL_TEMPLATES, type Template } from "../lib/templates";
 import { useHoverVideo } from "../lib/use-hover-video";
 
@@ -61,17 +62,24 @@ function buildGridItems(): GridSlotItem[] {
 function GridCard({
   slot,
   template,
+  index,
+  isAudioOn,
+  onToggleAudio,
 }: {
   slot: string;
   template: Template;
+  index: number;
+  isAudioOn: boolean;
+  onToggleAudio: () => void;
 }) {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState(false);
 
   const { onPointerEnter, onPointerLeave, onClick } = useHoverVideo({
     videoRef,
-    soundOn: false,
+    soundOn: isAudioOn,
   });
 
   const handleUseTemplate = (e: React.MouseEvent) => {
@@ -88,44 +96,57 @@ function GridCard({
       className={`video-card ${slot} group`}
       data-type={template.orientation}
       data-src={`${template.videoSrc}#t=0.1`}
+      style={{ transitionDelay: `${Math.min(index, 8) * 60}ms` }}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       onClick={onClick}
     >
       <video
         ref={videoRef}
-        muted
+        muted={!isAudioOn}
         loop
         playsInline
         preload="metadata"
+        onLoadedData={() => setLoaded(true)}
+        className={loaded ? "loaded" : ""}
       />
+
+      {/* Top-Right Audio Button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleAudio();
+        }}
+        data-cursor="hover"
+        title={isAudioOn ? "Mute audio" : "Unmute audio"}
+        className="card-audio-btn hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {isAudioOn ? (
+          <Volume2 className="h-3.5 w-3.5" />
+        ) : (
+          <VolumeX className="h-3.5 w-3.5 text-white/70" />
+        )}
+      </button>
+
       {/* Subtle Bottom Gradient */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/45 to-transparent z-[1]" />
 
       {/* BOTTOM ROW: Name Pill & Use this template button */}
-      <div className="absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2 sm:inset-x-2.5 sm:bottom-2.5">
-        <div
-          className={`min-w-0 truncate max-w-[55%] h-6 sm:h-7 px-2 sm:px-2.5 text-[10.5px] sm:text-[11.5px] font-semibold text-white bg-black/45 backdrop-blur rounded-full items-center shadow-sm pointer-events-none ${
-            template.orientation === "portrait" ? "hidden sm:flex" : "flex"
-          }`}
-        >
-          <span className="truncate">{template.name}</span>
+      <div className="card-bottom-row">
+        <div className="card-pill">
+          <span className="pill-full-name truncate">{template.name}</span>
+          <span className="pill-short-name">{template.id.replace("template-", "")}</span>
         </div>
 
         <button
           type="button"
           onClick={handleUseTemplate}
           data-cursor="hover"
-          className="shrink-0 whitespace-nowrap h-6 px-2.5 text-[10.5px] sm:h-7 sm:px-3 sm:text-[11.5px] gap-1 rounded-full font-semibold shadow-sm transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary inline-flex items-center justify-center bg-white/90 text-neutral-900 hover:bg-white"
+          className="card-use-btn bg-white/90 text-neutral-900 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          {template.orientation === "portrait" ? (
-            <>
-              <span className="sm:hidden">Use</span>
-              <span className="hidden sm:inline">Use this template</span>
-            </>
-          ) : (
-            <span>Use this template</span>
-          )}
+          <span className="btn-full-label">Use this template</span>
+          <span className="btn-short-label">Use</span>
         </button>
       </div>
     </div>
@@ -134,6 +155,7 @@ function GridCard({
 
 export function TemplateGrid() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [audioId, setAudioId] = useState<string | null>(null);
   const items = buildGridItems();
 
   useEffect(() => {
@@ -166,8 +188,17 @@ export function TemplateGrid() {
 
   return (
     <div ref={containerRef} className="video-grid reveal">
-      {items.map(({ slot, template }) => (
-        <GridCard key={template.id} slot={slot} template={template} />
+      {items.map(({ slot, template }, index) => (
+        <GridCard
+          key={template.id}
+          slot={slot}
+          template={template}
+          index={index}
+          isAudioOn={audioId === template.id}
+          onToggleAudio={() =>
+            setAudioId((prev) => (prev === template.id ? null : template.id))
+          }
+        />
       ))}
     </div>
   );

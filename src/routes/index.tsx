@@ -96,7 +96,7 @@ function Landing() {
   useRevealOnScroll();
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-background text-foreground">
+    <div className="page-enter relative min-h-screen overflow-x-clip bg-background text-foreground">
       <HalftoneBackground />
       <AmbientGlows />
       <CursorTrail />
@@ -416,7 +416,7 @@ function Hero() {
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               Early Access · Try It Live
             </Badge>
-            <h1 className="mt-6 text-balance text-[44px] font-semibold leading-[1.03] tracking-[-0.03em] sm:text-[56px] lg:text-[68px] xl:text-[76px]">
+            <h1 className="mt-6 text-balance text-[clamp(34px,9vw,44px)] font-semibold leading-[1.03] tracking-[-0.03em] sm:text-[56px] lg:text-[68px] xl:text-[76px]">
               Photos in.
               <br />
               <span className="relative inline-block bg-gradient-to-r from-primary via-primary-soft to-primary bg-clip-text text-transparent">

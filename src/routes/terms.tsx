@@ -30,7 +30,7 @@ function TermsPage() {
   useRevealOnScroll();
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-background text-foreground">
+    <div className="page-enter relative min-h-screen overflow-x-clip bg-background text-foreground">
       <HalftoneBackground />
       <AmbientGlows />
       <CursorTrail />

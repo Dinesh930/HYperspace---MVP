@@ -9,7 +9,7 @@
   duplicated, nothing that can drift out of sync between pages.
 */
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { openTallyForm } from "../lib/tally";
 
@@ -28,7 +28,6 @@ export function useScrolled(threshold = 8) {
 
 export function useRevealOnScroll() {
   useEffect(() => {
-    const els = document.querySelectorAll<HTMLElement>(".reveal");
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
@@ -40,8 +39,22 @@ export function useRevealOnScroll() {
       },
       { threshold: 0.12, rootMargin: "0px 0px -40px 0px" },
     );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+
+    const observeUnrevealed = () => {
+      document.querySelectorAll<HTMLElement>(".reveal:not(.in)").forEach((el) => io.observe(el));
+    };
+
+    observeUnrevealed();
+
+    const mo = new MutationObserver(() => {
+      observeUnrevealed();
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      io.disconnect();
+      mo.disconnect();
+    };
   }, []);
 }
 
@@ -57,9 +70,12 @@ export function HalftoneBackground() {
     if (!ctx) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const CELL = 6;
+    const isMobile = window.innerWidth < 768;
+    const CELL = isMobile ? 10 : 6;
     let raf: number;
     let t = 0;
+    let lastTime = 0;
+    const targetFpsInterval = isMobile ? 1000 / 30 : 1000 / 60;
     const ripples: { x: number; y: number; time: number }[] = [];
 
     function onClick(e: MouseEvent) {
@@ -103,7 +119,7 @@ export function HalftoneBackground() {
     }
 
     function resize() {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       canvas!.width = window.innerWidth * dpr;
       canvas!.height = window.innerHeight * dpr;
       canvas!.style.width = window.innerWidth + "px";
@@ -113,7 +129,18 @@ export function HalftoneBackground() {
     window.addEventListener("resize", resize);
     resize();
 
-    function render() {
+    function render(timestamp: number) {
+      if (document.visibilityState === "hidden") {
+        raf = requestAnimationFrame(render);
+        return;
+      }
+
+      if (timestamp - lastTime < targetFpsInterval) {
+        raf = requestAnimationFrame(render);
+        return;
+      }
+      lastTime = timestamp;
+
       const w = window.innerWidth;
       const h = window.innerHeight;
       ctx!.clearRect(0, 0, w, h);
@@ -155,7 +182,11 @@ export function HalftoneBackground() {
         }
       }
 
-      if (!reduced) t += 0.01;
+      if (reduced) {
+        return;
+      }
+
+      t += 0.01;
       raf = requestAnimationFrame(render);
     }
     raf = requestAnimationFrame(render);
@@ -180,11 +211,11 @@ export function AmbientGlows() {
       className="pointer-events-none absolute inset-x-0 top-0 -z-0 h-[900px] overflow-hidden"
     >
       <div
-        className="ambient-glow animate-drift-a left-[10%] top-[-120px] h-[420px] w-[420px]"
+        className="ambient-glow animate-drift-a left-[10%] top-[-120px] h-[320px] w-[320px] sm:h-[420px] sm:w-[420px] will-change-transform"
         style={{ background: "radial-gradient(circle, #8B7CFF 0%, transparent 70%)" }}
       />
       <div
-        className="ambient-glow animate-drift-b right-[5%] top-[80px] h-[520px] w-[520px]"
+        className="ambient-glow animate-drift-b right-[5%] top-[80px] h-[360px] w-[360px] sm:h-[520px] sm:w-[520px] will-change-transform"
         style={{
           background: "radial-gradient(circle, #6D5EF8 0%, transparent 70%)",
           opacity: 0.35,
@@ -280,6 +311,17 @@ export function Nav({
   scrolled: boolean;
   showCta?: boolean;
 }) {
+  const location = useLocation();
+  const isHome = location.pathname === "/";
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    if (isHome) {
+      e.preventDefault();
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+    }
+  };
+
   return (
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
@@ -288,16 +330,24 @@ export function Nav({
           : "border-b border-transparent bg-transparent"
       }`}
     >
-      <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between flex-nowrap px-3 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3 shrink-0">
-          <Link to="/" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <img src="/hyperspace-logo.png" alt="Hyper Space" className="h-5 sm:h-6 w-auto shrink-0 object-contain" />
-            <BrandName className="text-[15px] sm:text-[17px] font-semibold tracking-tight whitespace-nowrap" />
+      <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between flex-nowrap px-2.5 sm:px-6">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-3 shrink-0">
+          <Link
+            to="/"
+            onClick={handleLogoClick}
+            className="flex shrink-0 items-center gap-1.5 sm:gap-2"
+          >
+            <img
+              src="/hyperspace-logo.png"
+              alt="Hyper Space"
+              className="h-5 sm:h-6 w-auto shrink-0 object-contain"
+            />
+            <BrandName className="text-[13.5px] sm:text-[17px] font-semibold tracking-tight whitespace-nowrap" />
           </Link>
           <Link
             to="/studio"
             data-cursor="hover"
-            className="text-[13.5px] sm:text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            className="text-[12px] sm:text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
             activeProps={{ className: "!text-primary" }}
           >
             Studio
@@ -373,14 +423,31 @@ export function FloatingCta() {
    "#" placeholders, same as before, since only Terms was requested. */
 
 export function Footer() {
+  const location = useLocation();
+  const isHome = location.pathname === "/";
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    if (isHome) {
+      e.preventDefault();
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+    }
+  };
+
   return (
     <footer className="relative z-10 mt-28 border-t border-border py-10 md:mt-40">
       <div className="mx-auto flex w-full max-w-[1240px] flex-col items-center justify-between gap-4 px-6 text-[13.5px] sm:flex-row text-center sm:text-left">
         <div className="flex flex-wrap items-center justify-center gap-1.5 sm:justify-start text-center sm:text-left">
-          <img src="/hyperspace-logo.png" alt="Hyper Space" className="h-6 w-auto object-contain" />
-          <span className="text-[15.5px] font-bold text-black" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
-            Hyper space
-          </span>
+          <Link
+            to="/"
+            onClick={handleLogoClick}
+            className="flex items-center gap-1.5 text-foreground hover:opacity-80 transition-opacity"
+          >
+            <img src="/hyperspace-logo.png" alt="Hyper Space" className="h-6 w-auto object-contain" />
+            <span className="text-[15.5px] font-bold text-black" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
+              Hyper space
+            </span>
+          </Link>
           <span className="text-[15.5px] text-muted-foreground">
             - Let's hype your space.
           </span>
