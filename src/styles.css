@@ -477,7 +477,7 @@
   position: relative; display: inline-flex; align-items: center; justify-content: center;
   padding: 12px 28px; border-radius: 9999px;
   background-color: transparent; color: #fff;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 15px; font-weight: 600;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 16px; font-weight: 600;
   white-space: nowrap; cursor: pointer; overflow: hidden;
   border: 2px solid var(--primary);
   box-shadow: 0 0 40px 40px var(--primary) inset, 0 0 0 0 var(--primary);
@@ -501,9 +501,9 @@
   .cta-button:hover::before { animation-play-state: paused; opacity: 0; }
 }
 .cta-button:active { transform: scale(0.98); }
-.cta-button--compact { padding: 8px 14px; font-size: 12px; }
-@media (min-width: 640px) { .cta-button--compact { padding: 9px 18px; font-size: 13px; } }
-@media (max-width: 639px) { .cta-button:not(.cta-button--compact) { padding: 11px 22px; font-size: 14px; } }
+.cta-button--compact { padding: 8px 14px; font-size: 13px; }
+@media (min-width: 640px) { .cta-button--compact { padding: 9px 18px; font-size: 14px; } }
+@media (max-width: 639px) { .cta-button:not(.cta-button--compact) { padding: 11px 22px; font-size: 15px; } }
 @media (prefers-reduced-motion: reduce) { .cta-button::before { animation: none; display: none; } }
 
 /* --- TEMPLATE VIDEO GRID (STAGGERED RAIL FRAME) --- */

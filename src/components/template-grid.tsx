@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { ALL_TEMPLATES, type Template } from "../lib/templates";
+import { useHoverVideo } from "../lib/use-hover-video";
 
 const PORTRAIT_IDS = ["template-07", "template-08", "template-09", "template-13"] as const;
 const LANDSCAPE_IDS = [
@@ -56,6 +58,80 @@ function buildGridItems(): GridSlotItem[] {
   return items;
 }
 
+function GridCard({
+  slot,
+  template,
+}: {
+  slot: string;
+  template: Template;
+}) {
+  const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const { onPointerEnter, onPointerLeave, onClick } = useHoverVideo({
+    videoRef,
+    soundOn: false,
+  });
+
+  const handleUseTemplate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate({
+      to: "/studio",
+      search: { template: template.id },
+    });
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      className={`video-card ${slot} group`}
+      data-type={template.orientation}
+      data-src={`${template.videoSrc}#t=0.1`}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onClick={onClick}
+    >
+      <video
+        ref={videoRef}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+      />
+      {/* Subtle Bottom Gradient */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/45 to-transparent z-[1]" />
+
+      {/* BOTTOM ROW: Name Pill & Use this template button */}
+      <div className="absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2 sm:inset-x-2.5 sm:bottom-2.5">
+        <div
+          className={`min-w-0 truncate max-w-[55%] h-6 sm:h-7 px-2 sm:px-2.5 text-[10.5px] sm:text-[11.5px] font-semibold text-white bg-black/45 backdrop-blur rounded-full items-center shadow-sm pointer-events-none ${
+            template.orientation === "portrait" ? "hidden sm:flex" : "flex"
+          }`}
+        >
+          <span className="truncate">{template.name}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleUseTemplate}
+          data-cursor="hover"
+          className="shrink-0 whitespace-nowrap h-6 px-2.5 text-[10.5px] sm:h-7 sm:px-3 sm:text-[11.5px] gap-1 rounded-full font-semibold shadow-sm transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary inline-flex items-center justify-center bg-white/90 text-neutral-900 hover:bg-white"
+        >
+          {template.orientation === "portrait" ? (
+            <>
+              <span className="sm:hidden">Use</span>
+              <span className="hidden sm:inline">Use this template</span>
+            </>
+          ) : (
+            <span>Use this template</span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function TemplateGrid() {
   const containerRef = useRef<HTMLDivElement>(null);
   const items = buildGridItems();
@@ -64,32 +140,22 @@ export function TemplateGrid() {
     const container = containerRef.current;
     if (!container) return;
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
+    // IntersectionObserver ONLY to set src when within 200px of viewport
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          const card = entry.target as HTMLElement;
-          const video = card.querySelector<HTMLVideoElement>("video");
-          if (!video) return;
-
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
-            const videoSrc = card.getAttribute("data-src");
-            if (videoSrc && !video.getAttribute("src")) {
-              video.src = videoSrc;
+          if (entry.isIntersecting) {
+            const card = entry.target as HTMLElement;
+            const video = card.querySelector<HTMLVideoElement>("video");
+            const src = card.getAttribute("data-src");
+            if (video && src && !video.getAttribute("src")) {
+              video.src = src;
               video.load();
-            }
-            if (!reducedMotion) {
-              video.play().catch(() => {});
-            }
-          } else {
-            if (!video.paused) {
-              video.pause();
             }
           }
         });
       },
-      { threshold: 0.35 },
+      { rootMargin: "200px" },
     );
 
     const cards = container.querySelectorAll(".video-card");
@@ -101,22 +167,7 @@ export function TemplateGrid() {
   return (
     <div ref={containerRef} className="video-grid reveal">
       {items.map(({ slot, template }) => (
-        <div
-          key={template.id}
-          className={`video-card ${slot}`}
-          data-type={template.orientation}
-          data-src={template.videoSrc}
-        >
-          <video
-            muted
-            loop
-            playsInline
-            preload="none"
-          />
-          <span className="card-label">
-            {template.name}
-          </span>
-        </div>
+        <GridCard key={template.id} slot={slot} template={template} />
       ))}
     </div>
   );

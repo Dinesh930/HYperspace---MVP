@@ -32,8 +32,12 @@ import {
 } from "../components/site-chrome";
 import { VIDEO_BASE_URL } from "../lib/videos";
 import { type Template, TEMPLATE_CONFIG, TEMPLATES } from "../lib/templates";
+import { useHoverVideo } from "../lib/use-hover-video";
 
 export const Route = createFileRoute("/studio")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    template: typeof search.template === "string" ? search.template : undefined,
+  }),
   head: () => ({
     meta: [{ title: "Studio — Hyperspace" }],
   }),
@@ -118,6 +122,7 @@ interface UploadedPhoto {
 function StudioPage() {
   const scrolled = useScrolled();
   useRevealOnScroll();
+  const search = Route.useSearch();
 
   // Instant scroll to top before paint on navigation
   useEffect(() => {
@@ -168,6 +173,23 @@ function StudioPage() {
       });
     }, 80);
   };
+
+  // Auto-select template from search param and scroll to Step 2
+  useEffect(() => {
+    if (search.template && TEMPLATES.some((t) => t.id === search.template)) {
+      setSelectedTemplateId(search.template);
+      const timer = setTimeout(() => {
+        const prefersReducedMotion =
+          typeof window !== "undefined" &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        step2Ref.current?.scrollIntoView({
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [search.template]);
 
   // Template grouping
   const cinematicTemplates = TEMPLATES.filter((t) => t.category === "cinematic");
@@ -407,6 +429,13 @@ function StudioPage() {
   .gallery-construction .tpl-card { grid-column: auto !important; grid-row: auto !important; }
   .gallery-construction .tpl-card[data-type="landscape"] { grid-column: span 2 !important; aspect-ratio: 16 / 10; }
   .gallery-construction .tpl-card[data-type="portrait"] { grid-column: span 1 !important; aspect-ratio: 3 / 4; }
+}
+
+@media (hover: hover) {
+  .gallery-cinematic:hover .tpl-card,
+  .gallery-construction:hover .tpl-card { opacity: 0.4; transition: opacity 0.3s ease, transform 0.3s ease; }
+  .gallery-cinematic .tpl-card:hover,
+  .gallery-construction .tpl-card:hover { opacity: 1; transform: scale(1.015); }
 }
 
 @keyframes glow-pulse {
@@ -1311,47 +1340,22 @@ function VideoPlayer({
 
 function FitVideo({
   src,
-  playing,
+  videoRef,
   soundOn = false,
   loop = true,
   focus = "center",
   className = "",
   preload = "metadata",
-  onAutoplayBlocked,
 }: {
   src: string;
-  playing: boolean;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
   soundOn?: boolean;
   loop?: boolean;
   focus?: string;
   className?: string;
   preload?: "metadata" | "auto" | "none";
-  onAutoplayBlocked?: () => void;
 }) {
-  const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    const main = mainVideoRef.current;
-    if (!main || hasError) return;
-
-    main.muted = !soundOn;
-
-    if (playing) {
-      const playPromise = main.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          if (soundOn && onAutoplayBlocked) {
-            main.muted = true;
-            onAutoplayBlocked();
-            main.play().catch(() => {});
-          }
-        });
-      }
-    } else {
-      main.pause();
-    }
-  }, [playing, soundOn, hasError, onAutoplayBlocked]);
 
   if (hasError) {
     return (
@@ -1364,11 +1368,12 @@ function FitVideo({
 
   return (
     <video
-      ref={mainVideoRef}
+      ref={videoRef}
       src={`${src}#t=0.1`}
       preload={preload}
       playsInline
       loop={loop}
+      muted={!soundOn}
       onError={() => setHasError(true)}
       className={`absolute inset-0 h-full w-full object-cover pointer-events-none ${className}`}
       style={{ objectPosition: focus }}
@@ -1395,52 +1400,41 @@ function TemplateCard({
   isDisabled: boolean;
   onSelect: () => void;
 }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isPreloadAuto, setIsPreloadAuto] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDisabled) return;
-    setIsPreloadAuto(true);
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    setIsHovered(true);
-  };
+  const { isHovered, onPointerEnter, onPointerLeave, onClick } = useHoverVideo({
+    videoRef,
+    soundOn: isAudioOn,
+  });
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePointerEnter = (e: React.PointerEvent) => {
     if (isDisabled) return;
     const rect = e.currentTarget.getBoundingClientRect();
     setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    onPointerEnter(e);
   };
 
-  const handleMouseLeave = () => {
-    setIsHovered(false);
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (isDisabled) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
-  const isPlaying = isSelected || isAudioOn || (isHovered && !isDisabled);
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    onPointerLeave(e);
+  };
+
   const focus = TEMPLATE_FOCUS[template.id] || "center";
 
   return (
     <div
-      role="button"
       tabIndex={0}
       data-type={dataType}
-      onClick={() => {
-        if (!isDisabled) {
-          onSelect();
-        }
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          if (!isDisabled) {
-            onSelect();
-          }
-        }
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onPointerEnter={handlePointerEnter}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      onClick={onClick}
       data-cursor="hover"
       style={
         {
@@ -1448,7 +1442,7 @@ function TemplateCard({
           "--my": `${mousePos.y}px`,
         } as React.CSSProperties
       }
-      className={`tpl-card group relative isolate cursor-pointer rounded-[inherit] select-none focus-visible:outline-none ${slotClass} ${
+      className={`tpl-card group relative isolate rounded-[inherit] select-none focus-visible:outline-none ${slotClass} ${
         isHovered && !isDisabled ? "z-10" : "z-0"
       }`}
     >
@@ -1465,7 +1459,8 @@ function TemplateCard({
                 : "opacity-0"
         }`}
         style={{
-          background: "radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(169,156,255,0.5), rgba(169,156,255,0.15) 50%, transparent 70%)",
+          background:
+            "radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), rgba(169,156,255,0.5), rgba(169,156,255,0.15) 50%, transparent 70%)",
         }}
       />
 
@@ -1480,46 +1475,56 @@ function TemplateCard({
         }`}
       >
         <FitVideo
+          videoRef={videoRef}
           src={template.videoSrc}
-          playing={isPlaying}
           soundOn={isAudioOn}
-          loop={isSelected || isAudioOn}
+          loop={true}
           focus={focus}
-          preload={isPreloadAuto || isSelected ? "auto" : "metadata"}
+          preload={isHovered || isSelected ? "auto" : "metadata"}
         />
 
         {/* Subtle Bottom Gradient */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/45 to-transparent z-[1]" />
 
-        {/* LOWER-LEFT: Template Name Pill */}
-        <div className="pointer-events-none absolute bottom-2.5 left-2.5 z-10 flex h-7 max-w-[55%] items-center truncate rounded-full bg-black/45 backdrop-blur px-2.5 text-[11.5px] font-semibold text-white shadow-sm">
-          <span className="truncate">{template.name}</span>
-        </div>
+        {/* BOTTOM ROW: Name Pill & Use this template button in ONE flex row */}
+        <div className="absolute inset-x-2 bottom-2 z-10 flex items-center justify-between gap-2 sm:inset-x-2.5 sm:bottom-2.5">
+          <div
+            className={`min-w-0 truncate max-w-[55%] h-6 sm:h-7 px-2 sm:px-2.5 text-[10.5px] sm:text-[11.5px] font-semibold text-white bg-black/45 backdrop-blur rounded-full items-center shadow-sm pointer-events-none ${
+              dataType === "portrait" ? "hidden sm:flex" : "flex"
+            }`}
+          >
+            <span className="truncate">{template.name}</span>
+          </div>
 
-        {/* LOWER-RIGHT: Use this template / In use button */}
-        <button
-          type="button"
-          disabled={isDisabled}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect();
-          }}
-          data-cursor="hover"
-          className={`absolute bottom-2.5 right-2.5 z-10 flex h-7 min-w-[108px] items-center justify-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-semibold shadow-sm transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-            isSelected
-              ? "bg-primary text-white"
-              : "bg-white/90 text-neutral-900 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-          }`}
-        >
-          {isSelected ? (
-            <>
-              <Check className="h-3 w-3 stroke-[2.5]" />
-              <span>In use</span>
-            </>
-          ) : (
-            <span>Use this template</span>
-          )}
-        </button>
+          <button
+            type="button"
+            disabled={isDisabled}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+            data-cursor="hover"
+            className={`shrink-0 whitespace-nowrap h-6 px-2.5 text-[10.5px] sm:h-7 sm:px-3 sm:text-[11.5px] gap-1 rounded-full font-semibold shadow-sm transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary inline-flex items-center justify-center ${
+              isSelected
+                ? "bg-primary text-white"
+                : "bg-white/90 text-neutral-900 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+            }`}
+          >
+            {isSelected ? (
+              <>
+                <Check className="h-3 w-3 stroke-[2.5]" />
+                <span>In use</span>
+              </>
+            ) : dataType === "portrait" ? (
+              <>
+                <span className="sm:hidden">Use</span>
+                <span className="hidden sm:inline">Use this template</span>
+              </>
+            ) : (
+              <span>Use this template</span>
+            )}
+          </button>
+        </div>
 
         {/* TOP-RIGHT: Audio Toggle Button */}
         <button
