@@ -31,6 +31,7 @@ import {
   Badge,
 } from "../components/site-chrome";
 import { VIDEO_BASE_URL } from "../lib/videos";
+import { openTallyForm } from "../lib/tally";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -39,9 +40,6 @@ export const Route = createFileRoute("/studio")({
   component: StudioPage,
 });
 
-// Tally form ID/URL for video generation requests
-// Replace or update this with your final Tally URL or ID
-const TALLY_FORM_ID = "https://tally.so/r/7Rgxz6";
 const RESULT_VIDEO_SRC = `${VIDEO_BASE_URL}/template-06.mp4`;
 const MAX_PHOTOS = 6;
 const GENERATION_MS = 8000;
@@ -381,36 +379,6 @@ function StudioPage() {
     }, 100);
   };
 
-  const handleOpenTallyForm = () => {
-    if (!selectedTemplateId || uploadedPhotos.length === 0 || isLocked) return;
-
-    const formIdOrUrl = TALLY_FORM_ID.replace("https://tally.so/r/", "");
-    const fullUrl = TALLY_FORM_ID.startsWith("http")
-      ? TALLY_FORM_ID
-      : `https://tally.so/r/${TALLY_FORM_ID}`;
-
-    const win = window as unknown as {
-      Tally?: {
-        openPopup: (
-          id: string,
-          options: {
-            layout: "modal";
-            width: number;
-          }
-        ) => void;
-      };
-    };
-
-    if (win.Tally) {
-      win.Tally.openPopup(formIdOrUrl, {
-        layout: "modal",
-        width: 700,
-      });
-    } else {
-      window.open(fullUrl, "_blank");
-    }
-  };
-
   const handleReset = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -511,7 +479,7 @@ function StudioPage() {
       <AmbientGlows />
       <CursorTrail />
 
-      <Nav scrolled={scrolled} />
+      <Nav scrolled={scrolled} showCta={true} />
 
       <motion.main
         initial={{ opacity: 0, y: 12 }}
@@ -926,17 +894,12 @@ function StudioPage() {
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <button
                 type="button"
-                disabled={!selectedTemplateId || uploadedPhotos.length === 0 || isLocked}
-                onClick={handleOpenTallyForm}
+                onClick={openTallyForm}
                 data-cursor="hover"
-                className={`btn-glow-effect group inline-flex h-11 items-center gap-2 rounded-full px-6 text-[14px] font-medium transition-all duration-300 ${
-                  !selectedTemplateId || uploadedPhotos.length === 0 || isLocked
-                    ? "opacity-40 cursor-not-allowed hover:scale-100 [animation-play-state:paused]"
-                    : "hover:scale-105"
-                }`}
+                className="btn-glow-effect group inline-flex h-11 items-center gap-2 rounded-full px-6 text-[14px] font-medium transition-all duration-300 hover:scale-105"
               >
                 <Wand2 className="h-4 w-4" />
-                <span>Generate Video</span>
+                <span>Get your early access</span>
               </button>
               <span className="text-[13.5px] text-muted-foreground font-medium">
                 {!selectedTemplateId

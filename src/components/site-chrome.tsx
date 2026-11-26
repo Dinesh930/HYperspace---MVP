@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { openTallyForm } from "../lib/tally";
 
 /* ---------------- HOOKS ---------------- */
 
@@ -272,7 +273,13 @@ export function BrandName({ className = "" }: { className?: string }) {
   );
 }
 
-export function Nav({ scrolled }: { scrolled: boolean }) {
+export function Nav({
+  scrolled,
+  showCta = false,
+}: {
+  scrolled: boolean;
+  showCta?: boolean;
+}) {
   return (
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
@@ -281,8 +288,8 @@ export function Nav({ scrolled }: { scrolled: boolean }) {
           : "border-b border-transparent bg-transparent"
       }`}
     >
-      <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between px-3.5 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+      <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between flex-nowrap px-3 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3 shrink-0">
           <Link to="/" className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <img src="/hyperspace-logo.png" alt="Hyper Space" className="h-5 sm:h-6 w-auto shrink-0 object-contain" />
             <BrandName className="text-[15px] sm:text-[17px] font-semibold tracking-tight whitespace-nowrap" />
@@ -290,40 +297,65 @@ export function Nav({ scrolled }: { scrolled: boolean }) {
           <Link
             to="/studio"
             data-cursor="hover"
-            className="text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            className="text-[13.5px] sm:text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
             activeProps={{ className: "!text-primary" }}
           >
             Studio
           </Link>
         </div>
-        <div className="hidden md:flex items-center gap-7">
-          <Link
-            to="/"
-            hash="what-we-do"
+
+        {showCta && (
+          <button
+            type="button"
+            onClick={openTallyForm}
             data-cursor="hover"
-            className="text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+            className="btn-glow-effect shrink-0 inline-flex items-center justify-center rounded-full font-medium whitespace-nowrap h-8 px-3 text-[12px] sm:h-10 sm:px-5 sm:text-[13.5px]"
           >
-            What we do
-          </Link>
-          <Link
-            to="/"
-            hash="how-it-works"
-            data-cursor="hover"
-            className="text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-          >
-            How it works
-          </Link>
-          <Link
-            to="/studio"
-            data-cursor="hover"
-            className="text-[14px] font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            activeProps={{ className: "!text-primary" }}
-          >
-            Templates
-          </Link>
-        </div>
+            Get your early access
+          </button>
+        )}
       </div>
     </header>
+  );
+}
+
+/* ---------------- FLOATING CTA (LANDING PAGE) ---------------- */
+
+export function FloatingCta() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const target = document.getElementById("see-it-in-action");
+    if (!target) return;
+
+    const onScroll = () => {
+      const rect = target.getBoundingClientRect();
+      setVisible(rect.top <= 0);
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <button
+      type="button"
+      onClick={openTallyForm}
+      data-cursor="hover"
+      aria-hidden={!visible}
+      style={{
+        top: "calc(12px + env(safe-area-inset-top, 0px))",
+        right: "calc(12px + env(safe-area-inset-right, 0px))",
+      }}
+      className={`btn-glow-effect fixed z-50 inline-flex items-center justify-center rounded-full font-medium whitespace-nowrap h-9 px-4 text-[12.5px] sm:h-10 sm:px-5 sm:text-[13.5px] transition-all duration-300 ${
+        visible
+          ? "opacity-100 translate-y-0 pointer-events-auto"
+          : "opacity-0 -translate-y-2 pointer-events-none"
+      }`}
+    >
+      Get your early access
+    </button>
   );
 }
 
@@ -334,17 +366,17 @@ export function Nav({ scrolled }: { scrolled: boolean }) {
 export function Footer() {
   return (
     <footer className="relative z-10 mt-28 border-t border-border py-10 md:mt-40">
-      <div className="mx-auto flex w-full max-w-[1240px] flex-col items-center justify-between gap-4 px-6 text-[13.5px] text-muted-foreground sm:flex-row">
-        <div className="flex flex-wrap items-center justify-center gap-2 text-center sm:justify-start sm:text-left">
+      <div className="mx-auto flex w-full max-w-[1240px] flex-col items-center justify-between gap-4 px-6 text-[13.5px] sm:flex-row text-center sm:text-left">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:justify-start text-center sm:text-left">
           <img src="/hyperspace-logo.png" alt="Hyper Space" className="h-6 w-auto object-contain" />
           <span className="text-[15.5px] font-bold text-black" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
-            Hyper space·
+            Hyper space
           </span>
-          <span className="text-[15.5px]" style={{ color: "#9A9EA6" }}>
-            Let's hype your space.
+          <span className="text-[15.5px] text-muted-foreground">
+            - Let's hype your space.
           </span>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center justify-center gap-6 text-muted-foreground">
           <Link to="/privacy" className="transition-colors hover:text-foreground">
             Privacy
           </Link>

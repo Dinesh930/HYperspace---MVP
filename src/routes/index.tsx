@@ -23,11 +23,13 @@ import {
   AmbientGlows,
   CursorTrail,
   Nav,
+  FloatingCta,
   Footer,
   Badge,
   SectionHeader,
 } from "../components/site-chrome";
 import { VIDEO_BASE_URL } from "../lib/videos";
+import { openTallyForm } from "../lib/tally";
 
 const COMPARISON_ROWS = [
   {
@@ -99,6 +101,7 @@ function Landing() {
       <CursorTrail />
 
       <Nav scrolled={scrolled} />
+      <FloatingCta />
 
       <main className="relative z-10">
         <Hero />
@@ -424,13 +427,14 @@ function Hero() {
             </p>
 
             <div className="mt-9 inline-flex flex-col items-center gap-3">
-              <Link
-                to="/studio"
+              <button
+                type="button"
+                onClick={openTallyForm}
                 data-cursor="hover"
                 className="btn-glow-effect group inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-8 text-[14.5px] font-medium transition-all duration-300 hover:scale-105"
               >
                 Get your early access
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -454,7 +458,7 @@ const SHOWCASE_VIDEO_SRC = "/videos/showcase/kling_20260721_VIDEO_Transform__745
 
 function PhotoVideoShowcase() {
   return (
-    <section className="relative mt-20 md:mt-28">
+    <section id="see-it-in-action" className="relative mt-20 md:mt-28">
       <div className="mx-auto w-full max-w-[1240px] px-6">
         <SectionHeader
           eyebrow="See it in action"
@@ -689,13 +693,14 @@ function FinalCTA() {
               See how Hyper space turns listing photos into cinematic walkthroughs. Pick a template, choose your photos, and generate.
             </p>
             <div className="mx-auto mt-9 flex flex-col items-center justify-center">
-              <Link
-                to="/studio"
+              <button
+                type="button"
+                onClick={openTallyForm}
                 data-cursor="hover"
                 className="btn-glow-effect group inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-8 text-[14.5px] font-medium transition-all duration-300 hover:scale-105"
               >
                 Get your early access
-              </Link>
+              </button>
             </div>
           </div>
         </div>
