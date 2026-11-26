@@ -30,6 +30,7 @@ import {
   SectionHeader,
 } from "../components/site-chrome";
 import { VIDEO_BASE_URL } from "../lib/videos";
+import { TemplateGrid } from "../components/template-grid";
 
 const COMPARISON_ROWS = [
   {
@@ -107,6 +108,7 @@ function Landing() {
         <Hero />
         <PhotoVideoShowcase />
         <LaunchStrip />
+        <TemplatesSection />
         <WhatWeDo />
         <HowItWorks />
         <FinalCTA />
@@ -580,6 +582,25 @@ function LaunchStrip() {
               <span className="font-medium">{it.label}</span>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+/* ---------------- TEMPLATES SECTION ---------------- */
+
+function TemplatesSection() {
+  return (
+    <section id="templates" className="mt-28 md:mt-40 scroll-mt-24">
+      <div className="mx-auto w-full max-w-[1240px] px-6">
+        <SectionHeader
+          eyebrow="Explore Presets"
+          title="Pick a look. We handle the rest."
+        />
+        <div className="mt-14">
+          <TemplateGrid />
         </div>
       </div>
     </section>

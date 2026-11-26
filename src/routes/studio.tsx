@@ -31,6 +31,7 @@ import {
   EarlyAccessButton,
 } from "../components/site-chrome";
 import { VIDEO_BASE_URL } from "../lib/videos";
+import { type Template, TEMPLATE_CONFIG, TEMPLATES } from "../lib/templates";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -99,59 +100,6 @@ const SHAPES = [
   { id: "9:16", label: "9:16", name: "Vertical" },
   { id: "1:1", label: "1:1", name: "Square" },
 ] as const;
-
-interface Template {
-  id: string;
-  name: string;
-  videoSrc: string;
-  category: "cinematic" | "construction";
-  orientation: "landscape" | "portrait";
-}
-
-// Categories & Orientations:
-// template-01 to template-06: category "cinematic", orientation "landscape"
-// template-07, template-08, template-09: category "construction", orientation "portrait"
-// template-10, template-11, template-12: category "construction", orientation "landscape"
-// template-13: category "construction", orientation "portrait"
-// template-14 to template-20: category "construction", orientation "landscape"
-const TEMPLATE_CONFIG: Record<
-  number,
-  { category: "cinematic" | "construction"; orientation: "landscape" | "portrait" }
-> = {
-  1: { category: "cinematic", orientation: "landscape" },
-  2: { category: "cinematic", orientation: "landscape" },
-  3: { category: "cinematic", orientation: "landscape" },
-  4: { category: "cinematic", orientation: "landscape" },
-  5: { category: "cinematic", orientation: "landscape" },
-  6: { category: "cinematic", orientation: "landscape" },
-  7: { category: "construction", orientation: "portrait" },
-  8: { category: "construction", orientation: "portrait" },
-  9: { category: "construction", orientation: "portrait" },
-  10: { category: "construction", orientation: "landscape" },
-  11: { category: "construction", orientation: "landscape" },
-  12: { category: "construction", orientation: "landscape" },
-  13: { category: "construction", orientation: "portrait" },
-  14: { category: "construction", orientation: "landscape" },
-  15: { category: "construction", orientation: "landscape" },
-  16: { category: "construction", orientation: "landscape" },
-  17: { category: "construction", orientation: "landscape" },
-  18: { category: "construction", orientation: "landscape" },
-  19: { category: "construction", orientation: "landscape" },
-  20: { category: "construction", orientation: "landscape" },
-};
-
-const TEMPLATES: Template[] = Array.from({ length: 20 }, (_, i) => {
-  const num = i + 1;
-  const idNum = String(num).padStart(2, "0");
-  const cfg = TEMPLATE_CONFIG[num];
-  return {
-    id: `template-${idNum}`,
-    name: `Template ${idNum}`,
-    videoSrc: `${VIDEO_BASE_URL}/template-${idNum}.mp4`,
-    category: cfg.category,
-    orientation: cfg.orientation,
-  };
-}).filter((t) => t.id !== "template-06");
 
 const STATUS_MESSAGES = [
   "Reading your photos...",
