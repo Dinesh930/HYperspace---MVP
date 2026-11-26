@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef, Fragment } from "react";
-import type { ReactNode } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Upload,
@@ -8,21 +7,14 @@ import {
   Share2,
   Film,
   Play,
-  Layers,
-  Clock,
-  Building2,
-  Rocket,
-  Wand2,
-  Star,
-  MousePointerClick,
-  Clapperboard,
-  MonitorSmartphone,
-  Coins,
   Check,
   X,
   ArrowRight,
   Volume2,
   VolumeX,
+  Wand2,
+  Rocket,
+  Star,
 } from "lucide-react";
 import {
   useScrolled,
@@ -114,7 +106,6 @@ function Landing() {
         <LaunchStrip />
         <WhatWeDo />
         <HowItWorks />
-        <Why />
         <FinalCTA />
         <ComparisonSection />
       </main>
@@ -438,11 +429,8 @@ function Hero() {
                 data-cursor="hover"
                 className="btn-glow-effect group inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-8 text-[14.5px] font-medium transition-all duration-300 hover:scale-105"
               >
-                Get my free video
+                Get your early access
               </Link>
-              <p className="text-[12.5px] text-muted-foreground text-center">
-                No credit card required
-              </p>
             </div>
           </div>
 
@@ -605,71 +593,9 @@ function LaunchStrip() {
 /* ---------------- WHAT WE DO ---------------- */
 
 function WhatWeDo() {
-  const cards = [
-    {
-      n: "01",
-      icon: <MousePointerClick className="h-5 w-5" />,
-      title: "No prompts",
-      body: "Pick a template and upload photos. Nothing to prompt, no manual editing.",
-    },
-    {
-      n: "02",
-      icon: <Clapperboard className="h-5 w-5" />,
-      title: "Camera work built in",
-      body: "Drone orbits, speed ramps and slow dolly-ins, crafted for each template.",
-    },
-    {
-      n: "03",
-      icon: <MonitorSmartphone className="h-5 w-5" />,
-      title: "Any format",
-      body: "Landscape (16:9), vertical (9:16) or square (1:1), from 480p to 1080p.",
-    },
-    {
-      n: "04",
-      icon: <Coins className="h-5 w-5" />,
-      title: "Pay as you render",
-      body: "Credits used per second rendered. Unused credits rollover automatically.",
-    },
-  ];
-
   return (
     <section id="what-we-do" className="mt-28 md:mt-40 scroll-mt-24">
-      <div className="mx-auto w-full max-w-[1240px] px-6">
-        <div className="reveal mx-auto max-w-[960px] text-center">
-          <span className="inline-block text-[12px] font-medium uppercase tracking-[0.18em] text-primary">
-            What we do
-          </span>
-          <h2 className="mt-4 text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.025em] sm:text-[44px]">
-            The camera crew, the editor and the prompt,
-            <br className="hidden sm:block" /> replaced by one template.
-          </h2>
-          <p className="mx-auto mt-5 max-w-[640px] text-[17px] leading-[1.6] text-muted-foreground">
-            HyperSpace turns a handful of photos into a polished video with real camera movement, ready to post.
-          </p>
-        </div>
-
-        <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {cards.map((card, i) => (
-            <div
-              key={card.n}
-              data-cursor="hover"
-              className="reveal group relative rounded-2xl border border-border bg-white p-8 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_20px_60px_-30px_rgba(109,94,248,0.4)]"
-              style={{ transitionDelay: `${i * 60}ms` }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                  {card.icon}
-                </span>
-                <span className="text-[13px] font-medium tracking-widest text-muted-foreground/70">
-                  {card.n}
-                </span>
-              </div>
-              <h3 className="mt-8 text-[22px] font-semibold tracking-tight">{card.title}</h3>
-              <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{card.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Future feature placeholder: WhatWeDo section content will go here */}
     </section>
   );
 }
@@ -729,59 +655,6 @@ function HowItWorks() {
 }
 
 
-/* ---------------- WHY ---------------- */
-
-function Why() {
-  const features = [
-    {
-      icon: <Film className="h-5 w-5" />,
-      title: "Cinematic Results",
-      body: "Studio-grade camera moves, color, and pacing — designed to feel handcrafted, not templated.",
-    },
-    {
-      icon: <Layers className="h-5 w-5" />,
-      title: "Multi-Platform Ready",
-      body: "One click exports for Reels, TikTok, YouTube Shorts, MLS, and your website — sized perfectly.",
-    },
-    {
-      icon: <Clock className="h-5 w-5" />,
-      title: "Save Time",
-      body: "Skip editors, shoots, and revisions. Turn a batch of photos into a full campaign in minutes.",
-    },
-    {
-      icon: <Building2 className="h-5 w-5" />,
-      title: "Built for Real Estate",
-      body: "Trained on listings — from luxury estates to city apartments — so the output feels on-brand.",
-    },
-  ];
-  return (
-    <section className="mt-28 md:mt-40">
-      <div className="mx-auto w-full max-w-[1240px] px-6">
-        <SectionHeader eyebrow="Why Hyper space" title="A video studio for every listing." />
-        <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-2">
-          {features.map((f, i) => (
-            <div
-              key={f.title}
-              data-cursor="hover"
-              className="reveal group flex gap-5 rounded-2xl border border-border bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_20px_60px_-30px_rgba(109,94,248,0.35)]"
-              style={{ transitionDelay: `${i * 60}ms` }}
-            >
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                {f.icon}
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-[19px] font-semibold tracking-tight">{f.title}</h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{f.body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-
 /* ---------------- FINAL CTA ---------------- */
 
 function FinalCTA() {
@@ -821,11 +694,8 @@ function FinalCTA() {
                 data-cursor="hover"
                 className="btn-glow-effect group inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-8 text-[14.5px] font-medium transition-all duration-300 hover:scale-105"
               >
-                Get my free video
+                Get your early access
               </Link>
-              <p className="mt-3 text-[12.5px] text-muted-foreground text-center">
-                No credit card required
-              </p>
             </div>
           </div>
         </div>
@@ -853,23 +723,23 @@ function ComparisonSection() {
         <div className="reveal relative mx-auto mt-12 w-full max-w-[900px] pt-3.5 pb-3.5 sm:mt-16">
           {/* Highlight card: absolutely positioned panel BEHIND the table, bounds ONLY the table */}
           <div
-            className="absolute right-0 top-0 bottom-0 w-[33%] z-0 rounded-[20px] bg-white border border-primary/20 shadow-[0_20px_60px_-30px_rgba(109,94,248,0.35)] pointer-events-none"
+            className="absolute right-0 top-0 bottom-0 w-[36%] sm:w-[33%] z-0 rounded-[20px] bg-white border border-primary/20 shadow-[0_20px_60px_-30px_rgba(109,94,248,0.35)] pointer-events-none"
             aria-hidden="true"
           />
 
           <table className="relative z-10 w-full table-fixed border-separate border-spacing-0">
             <colgroup>
-              <col className="w-[38%]" />
+              <col className="w-[35%] sm:w-[38%]" />
               <col className="w-[29%]" />
-              <col className="w-[33%]" />
+              <col className="w-[36%] sm:w-[33%]" />
             </colgroup>
             <thead>
               <tr className="h-[64px]">
                 <th className="bg-transparent" />
-                <th className="bg-transparent px-2 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground sm:px-4">
+                <th className="bg-transparent px-1 text-center text-[9.5px] font-medium uppercase tracking-[0.14em] sm:tracking-[0.18em] text-muted-foreground sm:px-4 sm:text-[11px]">
                   Traditional videographer
                 </th>
-                <th className="bg-transparent px-2 text-center text-[18px] font-semibold text-foreground sm:px-4 sm:text-[20px]">
+                <th className="bg-transparent px-1 text-center text-[15px] font-semibold text-foreground sm:px-4 sm:text-[20px]">
                   HyperSpace
                 </th>
               </tr>
@@ -877,10 +747,10 @@ function ComparisonSection() {
             <tbody>
               {COMPARISON_ROWS.map((row) => (
                 <tr key={row.label} className="h-[56px] md:h-[60px]">
-                  <td className="border-t border-border bg-transparent pl-2 pr-2 text-left align-middle text-[11.5px] text-muted-foreground sm:pl-4 sm:text-[13px] break-words">
+                  <td className="border-t border-border bg-transparent pl-1.5 pr-1 text-left align-middle text-[10px] text-muted-foreground sm:pl-4 sm:pr-2 sm:text-[13px] break-words">
                     {row.label}
                   </td>
-                  <td className="border-t border-border bg-transparent px-2 text-center align-middle text-[11.5px] text-muted-foreground sm:text-[13px] break-words">
+                  <td className="border-t border-border bg-transparent px-1 text-center align-middle text-[10px] text-muted-foreground sm:px-2 sm:text-[13px] break-words">
                     {row.traditional === "check" ? (
                       <div className="flex items-center justify-center">
                         <Check className="h-4 w-4 stroke-[2.5] text-muted-foreground" />
@@ -895,7 +765,7 @@ function ComparisonSection() {
                       row.traditional
                     )}
                   </td>
-                  <td className="border-t border-border bg-transparent px-2 text-center align-middle text-[13px] font-medium text-foreground sm:text-[15px] md:text-[17px] break-words">
+                  <td className="border-t border-border bg-transparent px-1 text-center align-middle text-[11px] font-medium text-foreground sm:px-2 sm:text-[15px] md:text-[17px] break-words">
                     {row.hyperspace === "check" ? (
                       <div className="flex items-center justify-center">
                         <Check className="h-4 w-4 stroke-[2.5] text-primary" />

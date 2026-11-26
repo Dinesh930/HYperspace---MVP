@@ -335,16 +335,13 @@ export function Footer() {
   return (
     <footer className="relative z-10 mt-28 border-t border-border py-10 md:mt-40">
       <div className="mx-auto flex w-full max-w-[1240px] flex-col items-center justify-between gap-4 px-6 text-[13.5px] text-muted-foreground sm:flex-row">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 text-center sm:justify-start sm:text-left">
           <img src="/hyperspace-logo.png" alt="Hyper Space" className="h-6 w-auto object-contain" />
-          <span className="text-[15.5px] font-medium" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
-            <span style={{ color: "#000000" }}>Hyper</span>{" "}
-            <span className="relative inline-block bg-gradient-to-r from-primary via-primary-soft to-primary bg-clip-text text-transparent">
-              space
-            </span>
+          <span className="text-[15.5px] font-bold text-black" style={{ fontFamily: "Helvetica, Arial, sans-serif" }}>
+            Hyper space·
           </span>
-          <span className="hidden text-[15.5px] text-muted-foreground sm:inline">
-            · Let’s hype your space.
+          <span className="text-[15.5px]" style={{ color: "#9A9EA6" }}>
+            Let's hype your space.
           </span>
         </div>
         <div className="flex items-center gap-6">
