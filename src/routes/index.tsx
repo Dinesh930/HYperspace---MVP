@@ -592,14 +592,40 @@ function LaunchStrip() {
 /* ---------------- TEMPLATES SECTION ---------------- */
 
 function TemplatesSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setInView(true);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { rootMargin: "0px 0px 300px 0px", threshold: 0.01 },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section id="templates" className="mt-28 md:mt-40 scroll-mt-24">
+    <section ref={sectionRef} id="templates" className="mt-28 md:mt-40 scroll-mt-24">
       <div className="mx-auto w-full max-w-[1240px] px-6">
-        <SectionHeader
-          eyebrow="Explore Presets"
-          title="Pick a look. We handle the rest."
-        />
-        <div className="mt-14">
+        <div className={`tpl-reveal ${inView ? "in" : ""}`}>
+          <SectionHeader
+            eyebrow="Explore Presets"
+            title="Pick a look. We handle the rest."
+            visibleOnLoad={true}
+          />
+        </div>
+        <div className={`mt-14 tpl-reveal ${inView ? "in" : ""}`}>
           <TemplateGrid />
         </div>
       </div>

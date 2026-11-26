@@ -62,20 +62,17 @@ function buildGridItems(): GridSlotItem[] {
 function GridCard({
   slot,
   template,
-  index,
   isAudioOn,
   onToggleAudio,
 }: {
   slot: string;
   template: Template;
-  index: number;
   isAudioOn: boolean;
   onToggleAudio: () => void;
 }) {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const [loaded, setLoaded] = useState(false);
 
   const { onPointerEnter, onPointerLeave, onClick } = useHoverVideo({
     videoRef,
@@ -87,6 +84,7 @@ function GridCard({
     navigate({
       to: "/studio",
       search: { template: template.id },
+      resetScroll: false,
     });
   };
 
@@ -95,20 +93,17 @@ function GridCard({
       ref={cardRef}
       className={`video-card ${slot} group`}
       data-type={template.orientation}
-      data-src={`${template.videoSrc}#t=0.1`}
-      style={{ transitionDelay: `${Math.min(index, 8) * 60}ms` }}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       onClick={onClick}
     >
       <video
         ref={videoRef}
+        src={`${template.videoSrc}#t=0.1`}
         muted={!isAudioOn}
         loop
         playsInline
         preload="metadata"
-        onLoadedData={() => setLoaded(true)}
-        className={loaded ? "loaded" : ""}
       />
 
       {/* Top-Right Audio Button */}
@@ -154,46 +149,16 @@ function GridCard({
 }
 
 export function TemplateGrid() {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [audioId, setAudioId] = useState<string | null>(null);
   const items = buildGridItems();
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    // IntersectionObserver ONLY to set src when within 200px of viewport
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const card = entry.target as HTMLElement;
-            const video = card.querySelector<HTMLVideoElement>("video");
-            const src = card.getAttribute("data-src");
-            if (video && src && !video.getAttribute("src")) {
-              video.src = src;
-              video.load();
-            }
-          }
-        });
-      },
-      { rootMargin: "200px" },
-    );
-
-    const cards = container.querySelectorAll(".video-card");
-    cards.forEach((card) => observer.observe(card));
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div ref={containerRef} className="video-grid reveal">
-      {items.map(({ slot, template }, index) => (
+    <div className="video-grid">
+      {items.map(({ slot, template }) => (
         <GridCard
           key={template.id}
           slot={slot}
           template={template}
-          index={index}
           isAudioOn={audioId === template.id}
           onToggleAudio={() =>
             setAudioId((prev) => (prev === template.id ? null : template.id))

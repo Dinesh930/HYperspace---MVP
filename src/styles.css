@@ -90,7 +90,7 @@
 }
 
 .page-enter {
-  animation: pageIn 300ms ease both;
+  animation: pageIn 250ms ease-out both;
 }
 
 @keyframes pageIn {
@@ -98,6 +98,13 @@
     opacity: 0;
   }
   to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
     opacity: 1;
   }
 }
@@ -550,12 +557,26 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  opacity: 0;
-  transition: opacity 300ms ease;
 }
 
-.video-card video.loaded {
+/* Blur to clear section reveal */
+.tpl-reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(8px);
+  transition: opacity 0.25s ease-out, transform 0.25s ease-out, filter 0.25s ease-out;
+}
+.tpl-reveal.in {
   opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpl-reveal {
+    transform: none;
+    filter: none;
+    transition: opacity 0.25s ease-out;
+  }
 }
 
 .video-grid .slot-p1  { grid-column: 1 / 2; grid-row: 1 / 3; }

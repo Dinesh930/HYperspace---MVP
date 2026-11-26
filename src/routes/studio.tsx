@@ -32,7 +32,7 @@ import {
 } from "../components/site-chrome";
 import { VIDEO_BASE_URL } from "../lib/videos";
 import { type Template, TEMPLATE_CONFIG, TEMPLATES } from "../lib/templates";
-import { useHoverVideo } from "../lib/use-hover-video";
+import { useHoverVideo, smoothScrollToElement } from "../lib/use-hover-video";
 
 export const Route = createFileRoute("/studio")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -134,13 +134,14 @@ function StudioPage() {
   // Position at Step 2 before first paint if template was specified in search; otherwise instant scroll to top
   useLayoutEffect(() => {
     if (search.template && TEMPLATES.some((t) => t.id === search.template)) {
-      step2Ref.current?.scrollIntoView({ behavior: "auto", block: "start" });
-      navigate({ to: "/studio", search: {}, replace: true });
+      const headerOffset = 64 + 8; // sticky header height (64px) + 8px
+      if (step2Ref.current) {
+        const top = Math.max(0, step2Ref.current.getBoundingClientRect().top + window.scrollY - headerOffset);
+        window.scrollTo({ top, behavior: "instant" });
+      }
+      navigate({ to: "/studio", search: {}, replace: true, resetScroll: false });
     } else {
-      const prevBehavior = document.documentElement.style.scrollBehavior;
-      document.documentElement.style.scrollBehavior = "auto";
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-      document.documentElement.style.scrollBehavior = prevBehavior;
     }
   }, []);
 
@@ -172,16 +173,11 @@ function StudioPage() {
 
     setSelectedTemplateId(id);
 
-    const prefersReducedMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        step2Ref.current?.scrollIntoView({
-          behavior: prefersReducedMotion ? "auto" : "smooth",
-          block: "start",
-        });
+        if (step2Ref.current) {
+          smoothScrollToElement(step2Ref.current);
+        }
       });
     });
   };

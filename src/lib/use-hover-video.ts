@@ -3,6 +3,86 @@ import { useState, useRef, useCallback, useEffect } from "react";
 // Module-level tracking for touch devices so tapping one card pauses any active card
 let activeTouchPause: (() => void) | null = null;
 
+// Module-level tracking for RAF smooth scroll so overlapping calls cancel safely
+let activeScrollCancel: (() => void) | null = null;
+
+export function smoothScrollToElement(
+  el: HTMLElement | null,
+  options: { offset?: number; duration?: number } = {},
+) {
+  if (!el || typeof window === "undefined") return;
+
+  // Cancel any ongoing smooth scroll animation before starting a new one
+  if (activeScrollCancel) {
+    activeScrollCancel();
+    activeScrollCancel = null;
+  }
+
+  const offset = options.offset ?? (64 + 8); // sticky header height (64px) + 8px
+  const getTargetY = () => Math.max(0, el.getBoundingClientRect().top + window.scrollY - offset);
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (prefersReducedMotion) {
+    window.scrollTo({ top: getTargetY(), behavior: "instant" });
+    return;
+  }
+
+  const duration = options.duration ?? 650;
+  const startY = window.scrollY;
+  const startTime = performance.now();
+  let rafId: number | null = null;
+
+  function easeInOutCubic(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function cleanup() {
+    window.removeEventListener("wheel", onUserCancel, { passive: true } as EventListenerOptions);
+    window.removeEventListener("touchstart", onUserCancel, { passive: true } as EventListenerOptions);
+    window.removeEventListener("keydown", onUserCancel);
+    if (activeScrollCancel === cancel) {
+      activeScrollCancel = null;
+    }
+  }
+
+  function cancel() {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    cleanup();
+  }
+
+  function onUserCancel() {
+    cancel();
+  }
+
+  activeScrollCancel = cancel;
+
+  window.addEventListener("wheel", onUserCancel, { passive: true });
+  window.addEventListener("touchstart", onUserCancel, { passive: true });
+  window.addEventListener("keydown", onUserCancel);
+
+  function step(now: number) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = easeInOutCubic(progress);
+
+    const targetY = getTargetY();
+    const currentY = startY + (targetY - startY) * eased;
+
+    window.scrollTo({ top: currentY, behavior: "instant" });
+
+    if (progress < 1) {
+      rafId = requestAnimationFrame(step);
+    } else {
+      cleanup();
+    }
+  }
+
+  rafId = requestAnimationFrame(step);
+}
+
 export function useHoverVideo({
   videoRef,
   soundOn = false,
@@ -28,6 +108,8 @@ export function useHoverVideo({
     const video = videoRef.current;
     if (!video) return;
 
+    // Immediately set preload to auto and reset to 0
+    video.preload = "auto";
     try {
       video.currentTime = 0;
     } catch {
@@ -37,7 +119,10 @@ export function useHoverVideo({
     video.muted = !soundOn;
     const playPromise = video.play();
     if (playPromise !== undefined) {
-      playPromise.catch(() => {
+      playPromise.catch((err) => {
+        if (err?.name === "AbortError") {
+          return;
+        }
         if (soundOn && onAutoplayBlocked) {
           video.muted = true;
           onAutoplayBlocked();
