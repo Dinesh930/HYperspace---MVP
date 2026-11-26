@@ -47,4 +47,4 @@ export const ALL_TEMPLATES: Template[] = Array.from({ length: 20 }, (_, i) => {
   };
 });
 
-export const TEMPLATES: Template[] = ALL_TEMPLATES.filter((t) => t.id !== "template-06");
+export const TEMPLATES: Template[] = ALL_TEMPLATES;

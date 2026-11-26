@@ -6,11 +6,11 @@ let activeTouchPause: (() => void) | null = null;
 // Module-level tracking for RAF smooth scroll so overlapping calls cancel safely
 let activeScrollCancel: (() => void) | null = null;
 
-export function smoothScrollToElement(
-  el: HTMLElement | null,
-  options: { offset?: number; duration?: number } = {},
+function animateScrollTo(
+  getTargetY: () => number,
+  options: { duration?: number } = {},
 ) {
-  if (!el || typeof window === "undefined") return;
+  if (typeof window === "undefined") return;
 
   // Cancel any ongoing smooth scroll animation before starting a new one
   if (activeScrollCancel) {
@@ -18,17 +18,18 @@ export function smoothScrollToElement(
     activeScrollCancel = null;
   }
 
-  const offset = options.offset ?? (64 + 8); // sticky header height (64px) + 8px
-  const getTargetY = () => Math.max(0, el.getBoundingClientRect().top + window.scrollY - offset);
-
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (prefersReducedMotion) {
     window.scrollTo({ top: getTargetY(), behavior: "instant" });
     return;
   }
 
-  const duration = options.duration ?? 650;
   const startY = window.scrollY;
+  const initialTarget = getTargetY();
+  const distance = Math.abs(initialTarget - startY);
+  if (distance < 1) return;
+
+  const duration = options.duration ?? Math.min(900, Math.max(400, 400 + distance / 5));
   const startTime = performance.now();
   let rafId: number | null = null;
 
@@ -81,6 +82,26 @@ export function smoothScrollToElement(
   }
 
   rafId = requestAnimationFrame(step);
+}
+
+export function smoothScrollToElement(
+  el: HTMLElement | null,
+  options: { offset?: number; duration?: number } = {},
+) {
+  if (!el || typeof window === "undefined") return;
+  const offset = options.offset ?? (64 + 8); // sticky header height (64px) + 8px
+  animateScrollTo(
+    () => Math.max(0, el.getBoundingClientRect().top + window.scrollY - offset),
+    { duration: options.duration ?? 650 },
+  );
+}
+
+export function smoothScrollToTop() {
+  if (typeof window === "undefined") return;
+  const startY = window.scrollY;
+  if (startY <= 0) return;
+  const duration = Math.min(900, Math.max(400, 400 + startY / 5));
+  animateScrollTo(() => 0, { duration });
 }
 
 export function useHoverVideo({

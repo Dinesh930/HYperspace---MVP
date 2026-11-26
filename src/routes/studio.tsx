@@ -143,6 +143,9 @@ function StudioPage() {
     } else {
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     }
+    if (typeof window !== "undefined") {
+      document.documentElement.style.scrollBehavior = "";
+    }
   }, []);
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -163,6 +166,12 @@ function StudioPage() {
   const previewPanelRef = useRef<HTMLDivElement>(null);
   const photosRef = useRef<UploadedPhoto[]>([]);
   photosRef.current = uploadedPhotos;
+
+  const handleBackToHome = (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.documentElement.style.scrollBehavior = "auto";
+    navigate({ to: "/", resetScroll: false });
+  };
 
   const isLocked = stage === "generating" || stage === "generated";
   const selectedTemplate = TEMPLATES.find((t) => t.id === selectedTemplateId) || null;
@@ -458,6 +467,7 @@ function StudioPage() {
         <div>
           <Link
             to="/"
+            onClick={handleBackToHome}
             data-cursor="hover"
             className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
           >

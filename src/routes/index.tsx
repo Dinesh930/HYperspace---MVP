@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Upload,
@@ -94,6 +94,15 @@ export const Route = createFileRoute("/")({
 function Landing() {
   const scrolled = useScrolled();
   useRevealOnScroll();
+
+  useLayoutEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!window.location.hash) {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      }
+      document.documentElement.style.scrollBehavior = "";
+    }
+  }, []);
 
   return (
     <div className="page-enter relative min-h-screen overflow-x-clip bg-background text-foreground">

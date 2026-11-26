@@ -9,9 +9,10 @@
   duplicated, nothing that can drift out of sync between pages.
 */
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { openTallyForm } from "../lib/tally";
+import { smoothScrollToTop } from "../lib/use-hover-video";
 
 /* ---------------- HOOKS ---------------- */
 
@@ -311,26 +312,29 @@ export function Nav({
   scrolled: boolean;
   showCta?: boolean;
 }) {
+  const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === "/";
 
   const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (isHome) {
-      e.preventDefault();
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+      smoothScrollToTop();
+    } else {
+      document.documentElement.style.scrollBehavior = "auto";
+      navigate({ to: "/", resetScroll: false });
     }
   };
 
   return (
     <header
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+      className={`sticky top-0 z-50 h-16 w-full transition-all duration-300 ${
         scrolled
           ? "border-b border-border/70 bg-background/70 backdrop-blur-xl"
           : "border-b border-transparent bg-transparent"
       }`}
     >
-      <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between flex-nowrap px-2.5 sm:px-6">
+      <div className="mx-auto flex h-full w-full max-w-[1240px] items-center justify-between flex-nowrap px-2.5 sm:px-6">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-3 shrink-0">
           <Link
             to="/"
@@ -423,14 +427,17 @@ export function FloatingCta() {
    "#" placeholders, same as before, since only Terms was requested. */
 
 export function Footer() {
+  const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === "/";
 
   const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (isHome) {
-      e.preventDefault();
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+      smoothScrollToTop();
+    } else {
+      document.documentElement.style.scrollBehavior = "auto";
+      navigate({ to: "/", resetScroll: false });
     }
   };
 
