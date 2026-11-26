@@ -116,6 +116,8 @@ export function useHoverVideo({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const isTouchRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+  const wantsPlayRef = useRef(false);
 
   // Keep volume/muted in sync with soundOn
   useEffect(() => {
@@ -129,8 +131,15 @@ export function useHoverVideo({
     const video = videoRef.current;
     if (!video) return;
 
-    // Immediately set preload to auto and reset to 0
+    wantsPlayRef.current = true;
+
+    // Set preload="auto" before calling video.load()
     video.preload = "auto";
+    if (!hasLoadedRef.current) {
+      video.load();
+      hasLoadedRef.current = true;
+    }
+
     try {
       video.currentTime = 0;
     } catch {
@@ -140,21 +149,34 @@ export function useHoverVideo({
     video.muted = !soundOn;
     const playPromise = video.play();
     if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        if (err?.name === "AbortError") {
-          return;
-        }
-        if (soundOn && onAutoplayBlocked) {
-          video.muted = true;
-          onAutoplayBlocked();
-          video.play().catch(() => {});
-        }
-      });
+      playPromise
+        .then(() => {
+          // Prevent stale playback promise if user already left
+          if (!wantsPlayRef.current) {
+            video.pause();
+            try {
+              video.currentTime = 0;
+            } catch {
+              // ignore
+            }
+          }
+        })
+        .catch((err) => {
+          if (err?.name === "AbortError") {
+            return;
+          }
+          if (soundOn && onAutoplayBlocked && wantsPlayRef.current) {
+            video.muted = true;
+            onAutoplayBlocked();
+            video.play().catch(() => {});
+          }
+        });
     }
     setIsPlaying(true);
   }, [soundOn, onAutoplayBlocked, videoRef]);
 
   const stopPlayback = useCallback(() => {
+    wantsPlayRef.current = false;
     const video = videoRef.current;
     if (!video) return;
 

@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Volume2, VolumeX } from "lucide-react";
 import { ALL_TEMPLATES, type Template } from "../lib/templates";
 import { useHoverVideo } from "../lib/use-hover-video";
+import { posterFor } from "../lib/videos";
 
 const PORTRAIT_IDS = ["template-07", "template-08", "template-09", "template-13"] as const;
 const LANDSCAPE_IDS = [
@@ -99,11 +100,12 @@ function GridCard({
     >
       <video
         ref={videoRef}
-        src={`${template.videoSrc}#t=0.1`}
+        src={template.videoSrc}
+        poster={posterFor(template.id)}
         muted={!isAudioOn}
         loop
         playsInline
-        preload="metadata"
+        preload="none"
       />
 
       {/* Top-Right Audio Button */}

@@ -30,7 +30,7 @@ import {
   Badge,
   EarlyAccessButton,
 } from "../components/site-chrome";
-import { VIDEO_BASE_URL } from "../lib/videos";
+import { VIDEO_BASE_URL, posterFor } from "../lib/videos";
 import { type Template, TEMPLATE_CONFIG, TEMPLATES } from "../lib/templates";
 import { useHoverVideo, smoothScrollToElement } from "../lib/use-hover-video";
 
@@ -1341,27 +1341,30 @@ function VideoPlayer({
 
 function FitVideo({
   src,
+  poster,
   videoRef,
   soundOn = false,
   loop = true,
   focus = "center",
   className = "",
-  preload = "metadata",
+  preload = "none",
+  playing = false,
 }: {
   src: string;
+  poster?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
   soundOn?: boolean;
   loop?: boolean;
   focus?: string;
   className?: string;
   preload?: "metadata" | "auto" | "none";
+  playing?: boolean;
 }) {
   const [hasError, setHasError] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   if (hasError) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-neutral-200 p-4 text-center">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[#111114] p-4 text-center">
         <Film className="h-8 w-8 text-neutral-400" />
         <span className="text-[11px] text-neutral-500 font-medium">Preview unavailable</span>
       </div>
@@ -1371,14 +1374,15 @@ function FitVideo({
   return (
     <video
       ref={videoRef}
-      src={`${src}#t=0.1`}
+      src={src}
+      poster={poster}
       preload={preload}
       playsInline
+      autoPlay={playing}
       loop={loop}
       muted={!soundOn}
-      onLoadedData={() => setLoaded(true)}
       onError={() => setHasError(true)}
-      className={`absolute inset-0 h-full w-full object-cover pointer-events-none transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"} ${className}`}
+      className={`absolute inset-0 h-full w-full object-cover pointer-events-none bg-[#111114] ${className}`}
       style={{ objectPosition: focus }}
     />
   );
@@ -1469,7 +1473,7 @@ function TemplateCard({
 
       {/* Inner Frame (contains video and overlays, clips corners) */}
       <div
-        className={`absolute inset-0 rounded-[inherit] overflow-hidden bg-neutral-200 border transition-all duration-300 ease-out focus-visible:ring-2 focus-visible:ring-primary ${
+        className={`absolute inset-0 rounded-[inherit] overflow-hidden bg-[#111114] border transition-all duration-300 ease-out focus-visible:ring-2 focus-visible:ring-primary ${
           isSelected
             ? "border-primary ring-2 ring-primary/70 shadow-[0_0_20px_-4px_rgba(169,156,255,0.4)]"
             : isDisabled
@@ -1480,10 +1484,11 @@ function TemplateCard({
         <FitVideo
           videoRef={videoRef}
           src={template.videoSrc}
+          poster={posterFor(template.id)}
           soundOn={isAudioOn}
           loop={true}
           focus={focus}
-          preload={isHovered || isSelected ? "auto" : "metadata"}
+          preload="none"
         />
 
         {/* TOP-RIGHT: Audio Toggle Button */}
