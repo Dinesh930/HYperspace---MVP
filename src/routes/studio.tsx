@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import {
   ArrowLeft,
-  Wand2,
   ArrowRight,
   RotateCcw,
   Check,
@@ -29,9 +28,9 @@ import {
   Nav,
   Footer,
   Badge,
+  EarlyAccessButton,
 } from "../components/site-chrome";
 import { VIDEO_BASE_URL } from "../lib/videos";
-import { openTallyForm } from "../lib/tally";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -892,15 +891,7 @@ function StudioPage() {
 
             {/* Generate Button & helper text */}
             <div className="mt-6 flex flex-wrap items-center gap-4">
-              <button
-                type="button"
-                onClick={openTallyForm}
-                data-cursor="hover"
-                className="btn-glow-effect group inline-flex h-11 items-center gap-2 rounded-full px-6 text-[14px] font-medium transition-all duration-300 hover:scale-105"
-              >
-                <Wand2 className="h-4 w-4" />
-                <span>Get your early access</span>
-              </button>
+              <EarlyAccessButton />
               <span className="text-[13.5px] text-muted-foreground font-medium">
                 {!selectedTemplateId
                   ? "Select a template to continue."

@@ -24,12 +24,12 @@ import {
   CursorTrail,
   Nav,
   FloatingCta,
+  EarlyAccessButton,
   Footer,
   Badge,
   SectionHeader,
 } from "../components/site-chrome";
 import { VIDEO_BASE_URL } from "../lib/videos";
-import { openTallyForm } from "../lib/tally";
 
 const COMPARISON_ROWS = [
   {
@@ -427,14 +427,7 @@ function Hero() {
             </p>
 
             <div className="mt-9 inline-flex flex-col items-center gap-3">
-              <button
-                type="button"
-                onClick={openTallyForm}
-                data-cursor="hover"
-                className="btn-glow-effect group inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-8 text-[14.5px] font-medium transition-all duration-300 hover:scale-105"
-              >
-                Get your early access
-              </button>
+              <EarlyAccessButton />
             </div>
           </div>
 
@@ -693,14 +686,7 @@ function FinalCTA() {
               See how Hyper space turns listing photos into cinematic walkthroughs. Pick a template, choose your photos, and generate.
             </p>
             <div className="mx-auto mt-9 flex flex-col items-center justify-center">
-              <button
-                type="button"
-                onClick={openTallyForm}
-                data-cursor="hover"
-                className="btn-glow-effect group inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-8 text-[14.5px] font-medium transition-all duration-300 hover:scale-105"
-              >
-                Get your early access
-              </button>
+              <EarlyAccessButton />
             </div>
           </div>
         </div>
